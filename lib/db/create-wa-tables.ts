@@ -3,10 +3,7 @@ import { config } from 'dotenv';
 
 config({ path: '.env.local' });
 
-const sql = postgres(
-  process.env.WHATSAPP_DATABASE_URL || process.env.POSTGRES_URL || '',
-  { max: 1 }
-);
+const sql = postgres(process.env.DATABASE_URL || '', { max: 1, ssl: 'require' });
 
 async function createTables() {
   console.log('Criando tabelas WhatsApp...');
