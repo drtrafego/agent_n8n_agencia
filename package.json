@@ -16,7 +16,11 @@
     "wa:studio": "drizzle-kit studio --config=drizzle.whatsapp.config.ts"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "@tailwindcss/oxide", "sharp"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@tailwindcss/oxide",
+      "sharp"
+    ]
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -50,5 +54,8 @@
     "tw-animate-css": "^1.3.0",
     "typescript": "^5.8.3",
     "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "babel-plugin-react-compiler": "^1.0.0"
   }
 }

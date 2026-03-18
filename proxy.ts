@@ -3,9 +3,8 @@ import type { NextRequest } from 'next/server';
 import { signToken, verifyToken } from '@/lib/auth/session';
 
 const protectedRoutes = ['/inbox', '/settings', '/dashboard'];
-const publicRoutes = ['/sign-in', '/sign-up', '/', '/pricing'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get('session');
 
@@ -51,6 +50,8 @@ export async function middleware(request: NextRequest) {
 
   return res;
 }
+
+export { proxy as default };
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],

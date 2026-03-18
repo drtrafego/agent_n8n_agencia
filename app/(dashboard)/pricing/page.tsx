@@ -7,6 +7,14 @@ import { SubmitButton } from './submit-button';
 export const revalidate = 3600;
 
 export default async function PricingPage() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return (
+      <main className="max-w-7xl mx-auto px-4 py-12 text-center text-gray-500">
+        Stripe não configurado.
+      </main>
+    );
+  }
+
   const [prices, products] = await Promise.all([
     getStripePrices(),
     getStripeProducts(),
