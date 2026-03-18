@@ -7,20 +7,13 @@ declare global {
   var waClient: postgres.Sql | undefined;
 }
 
-const connectionString =
-  process.env.WHATSAPP_DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  '';
-
-if (!connectionString) {
-  throw new Error(
-    'WHATSAPP_DATABASE_URL or POSTGRES_URL environment variable is not set'
-  );
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set');
 }
 
 // Reusar conexão em dev (hot reload)
 if (!global.waClient) {
-  global.waClient = postgres(connectionString, { max: 5 });
+  global.waClient = postgres(process.env.DATABASE_URL, { max: 5 });
 }
 
 export const waDb = drizzle(global.waClient, { schema });

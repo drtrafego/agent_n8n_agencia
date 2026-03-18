@@ -9,9 +9,6 @@ export default {
   dialect: 'postgresql',
   tablesFilter: ['wa_*'],
   dbCredentials: {
-    url:
-      process.env.WHATSAPP_DATABASE_URL ||
-      process.env.POSTGRES_URL ||
-      '',
+    url: process.env.DATABASE_URL || '',
   },
 } satisfies Config;
