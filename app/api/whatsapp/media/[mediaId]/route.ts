@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
-import { mediaFiles } from '@/lib/db/whatsapp-schema';
+import { waMediaFiles } from '@/lib/db/whatsapp-schema';
 import { downloadMedia } from '@/lib/meta/client';
 import { put } from '@vercel/blob';
 
@@ -15,8 +15,8 @@ export async function GET(
     // Verificar se já temos a URL no banco
     const [existing] = await waDb
       .select()
-      .from(mediaFiles)
-      .where(eq(mediaFiles.waMediaId, mediaId))
+      .from(waMediaFiles)
+      .where(eq(waMediaFiles.waMediaId, mediaId))
       .limit(1);
 
     if (existing?.url) {

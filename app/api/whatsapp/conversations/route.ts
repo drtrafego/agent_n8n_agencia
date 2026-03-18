@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { desc, eq } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
-import { conversations, contacts } from '@/lib/db/whatsapp-schema';
+import { waConversations, waContacts } from '@/lib/db/whatsapp-schema';
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,25 +10,25 @@ export async function GET(req: NextRequest) {
 
     const rows = await waDb
       .select({
-        id: conversations.id,
-        status: conversations.status,
-        botActive: conversations.botActive,
-        unreadCount: conversations.unreadCount,
-        lastMessage: conversations.lastMessage,
-        lastMessageAt: conversations.lastMessageAt,
-        updatedAt: conversations.updatedAt,
+        id: waConversations.id,
+        status: waConversations.status,
+        botActive: waConversations.botActive,
+        unreadCount: waConversations.unreadCount,
+        lastMessage: waConversations.lastMessage,
+        lastMessageAt: waConversations.lastMessageAt,
+        updatedAt: waConversations.updatedAt,
         contact: {
-          id: contacts.id,
-          waId: contacts.waId,
-          name: contacts.name,
-          phone: contacts.phone,
-          avatarUrl: contacts.avatarUrl,
+          id: waContacts.id,
+          waId: waContacts.waId,
+          name: waContacts.name,
+          phone: waContacts.phone,
+          avatarUrl: waContacts.avatarUrl,
         },
       })
-      .from(conversations)
-      .innerJoin(contacts, eq(conversations.contactId, contacts.id))
-      .where(eq(conversations.status, status))
-      .orderBy(desc(conversations.lastMessageAt));
+      .from(waConversations)
+      .innerJoin(waContacts, eq(waConversations.contactId, waContacts.id))
+      .where(eq(waConversations.status, status))
+      .orderBy(desc(waConversations.lastMessageAt));
 
     return NextResponse.json(rows);
   } catch (err) {

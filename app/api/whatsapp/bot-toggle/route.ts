@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
-import { conversations } from '@/lib/db/whatsapp-schema';
+import { waConversations } from '@/lib/db/whatsapp-schema';
 import { emitSSE } from '@/lib/sse/emitter';
 
 export async function PATCH(req: NextRequest) {
@@ -13,9 +13,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     await waDb
-      .update(conversations)
+      .update(waConversations)
       .set({ botActive, updatedAt: new Date() })
-      .where(eq(conversations.id, conversationId));
+      .where(eq(waConversations.id, conversationId));
 
     emitSSE({ type: 'bot-toggle', conversationId, botActive });
 

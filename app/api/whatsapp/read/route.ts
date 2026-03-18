@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
-import { conversations, messages } from '@/lib/db/whatsapp-schema';
+import { waConversations, waMessages } from '@/lib/db/whatsapp-schema';
 import { markAsRead } from '@/lib/meta/client';
 
 export async function PATCH(req: NextRequest) {
@@ -14,16 +14,16 @@ export async function PATCH(req: NextRequest) {
 
     // Zerar unread count
     await waDb
-      .update(conversations)
+      .update(waConversations)
       .set({ unreadCount: 0, updatedAt: new Date() })
-      .where(eq(conversations.id, conversationId));
+      .where(eq(waConversations.id, conversationId));
 
     // Marcar última mensagem inbound como lida na Meta
     const [lastInbound] = await waDb
-      .select({ waMessageId: messages.waMessageId })
-      .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.createdAt)
+      .select({ waMessageId: waMessages.waMessageId })
+      .from(waMessages)
+      .where(eq(waMessages.conversationId, conversationId))
+      .orderBy(waMessages.createdAt)
       .limit(1);
 
     if (lastInbound?.waMessageId) {

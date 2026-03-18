@@ -4,10 +4,10 @@ import { after } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
 import {
-  contacts,
-  conversations,
-  messages,
-  webhookLogs,
+  waContacts,
+  waConversations,
+  waMessages,
+  waWebhookLogs,
 } from '@/lib/db/whatsapp-schema';
 import { emitSSE } from '@/lib/sse/emitter';
 import {
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   // Salvar log do webhook (fire and forget)
   waDb
-    .insert(webhookLogs)
+    .insert(waWebhookLogs)
     .values({ payload: payload as Record<string, unknown>, status: 'processed' })
     .catch(console.error);
 
@@ -75,9 +75,9 @@ export async function POST(req: NextRequest) {
   // Processar updates de status (delivered/read)
   for (const statusUpdate of parsed.statuses) {
     await waDb
-      .update(messages)
+      .update(waMessages)
       .set({ status: statusUpdate.status })
-      .where(eq(messages.waMessageId, statusUpdate.id))
+      .where(eq(waMessages.waMessageId, statusUpdate.id))
       .catch(console.error);
   }
 
@@ -90,13 +90,13 @@ export async function POST(req: NextRequest) {
       // Upsert contato
       let [contact] = await waDb
         .select()
-        .from(contacts)
-        .where(eq(contacts.waId, waId))
+        .from(waContacts)
+        .where(eq(waContacts.waId, waId))
         .limit(1);
 
       if (!contact) {
         const [created] = await waDb
-          .insert(contacts)
+          .insert(waContacts)
           .values({
             waId,
             name: profile?.profile?.name ?? waId,
@@ -106,21 +106,21 @@ export async function POST(req: NextRequest) {
         contact = created;
       } else if (profile?.profile?.name && !contact.name) {
         await waDb
-          .update(contacts)
+          .update(waContacts)
           .set({ name: profile.profile.name, updatedAt: new Date() })
-          .where(eq(contacts.id, contact.id));
+          .where(eq(waContacts.id, contact.id));
       }
 
       // Upsert conversa
       let [conv] = await waDb
         .select()
-        .from(conversations)
-        .where(eq(conversations.contactId, contact.id))
+        .from(waConversations)
+        .where(eq(waConversations.contactId, contact.id))
         .limit(1);
 
       if (!conv) {
         const [created] = await waDb
-          .insert(conversations)
+          .insert(waConversations)
           .values({ contactId: contact.id })
           .returning();
         conv = created;
@@ -128,9 +128,9 @@ export async function POST(req: NextRequest) {
 
       // Verificar duplicata
       const existing = await waDb
-        .select({ id: messages.id })
-        .from(messages)
-        .where(eq(messages.waMessageId, msg.id))
+        .select({ id: waMessages.id })
+        .from(waMessages)
+        .where(eq(waMessages.waMessageId, msg.id))
         .limit(1);
 
       if (existing.length > 0) continue;
@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
 
       // Inserir mensagem
       const [saved] = await waDb
-        .insert(messages)
+        .insert(waMessages)
         .values({
           conversationId: conv.id,
           contactId: contact.id,
@@ -179,14 +179,14 @@ export async function POST(req: NextRequest) {
 
       // Atualizar conversa
       await waDb
-        .update(conversations)
+        .update(waConversations)
         .set({
           lastMessage: msgBody || '[mídia]',
           lastMessageAt: new Date(),
           unreadCount: conv.unreadCount + 1,
           updatedAt: new Date(),
         })
-        .where(eq(conversations.id, conv.id));
+        .where(eq(waConversations.id, conv.id));
 
       // Emitir SSE
       emitSSE({

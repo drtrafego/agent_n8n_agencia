@@ -15,6 +15,9 @@
     "wa:migrate": "drizzle-kit migrate --config=drizzle.whatsapp.config.ts",
     "wa:studio": "drizzle-kit studio --config=drizzle.whatsapp.config.ts"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "@tailwindcss/oxide", "sharp"]
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@tailwindcss/postcss": "4.1.7",

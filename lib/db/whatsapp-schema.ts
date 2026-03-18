@@ -10,7 +10,8 @@ import {
 import { relations } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
-export const contacts = pgTable('contacts', {
+// Prefixo wa_ para separar das tabelas de auth no mesmo banco
+export const waContacts = pgTable('wa_contacts', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   waId: text('wa_id').unique().notNull(),
   name: text('name'),
@@ -20,11 +21,11 @@ export const contacts = pgTable('contacts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const conversations = pgTable('conversations', {
+export const waConversations = pgTable('wa_conversations', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   contactId: uuid('contact_id')
     .notNull()
-    .references(() => contacts.id),
+    .references(() => waContacts.id),
   status: text('status').notNull().default('open'),
   botActive: boolean('bot_active').notNull().default(true),
   unreadCount: integer('unread_count').notNull().default(0),
@@ -34,12 +35,12 @@ export const conversations = pgTable('conversations', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const messages = pgTable('messages', {
+export const waMessages = pgTable('wa_messages', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   conversationId: uuid('conversation_id')
     .notNull()
-    .references(() => conversations.id),
-  contactId: uuid('contact_id').references(() => contacts.id),
+    .references(() => waConversations.id),
+  contactId: uuid('contact_id').references(() => waContacts.id),
   waMessageId: text('wa_message_id').unique(),
   direction: text('direction').notNull(),
   type: text('type').notNull(),
@@ -52,11 +53,11 @@ export const messages = pgTable('messages', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const mediaFiles = pgTable('media_files', {
+export const waMediaFiles = pgTable('wa_media_files', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   messageId: uuid('message_id')
     .notNull()
-    .references(() => messages.id),
+    .references(() => waMessages.id),
   waMediaId: text('wa_media_id'),
   url: text('url'),
   mimeType: text('mime_type'),
@@ -65,7 +66,7 @@ export const mediaFiles = pgTable('media_files', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const webhookLogs = pgTable('webhook_logs', {
+export const waWebhookLogs = pgTable('wa_webhook_logs', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   payload: jsonb('payload'),
   status: text('status').notNull().default('processed'),
@@ -74,50 +75,50 @@ export const webhookLogs = pgTable('webhook_logs', {
 });
 
 // Relations
-export const contactsRelations = relations(contacts, ({ many }) => ({
-  conversations: many(conversations),
-  messages: many(messages),
+export const waContactsRelations = relations(waContacts, ({ many }) => ({
+  conversations: many(waConversations),
+  messages: many(waMessages),
 }));
 
-export const conversationsRelations = relations(
-  conversations,
+export const waConversationsRelations = relations(
+  waConversations,
   ({ one, many }) => ({
-    contact: one(contacts, {
-      fields: [conversations.contactId],
-      references: [contacts.id],
+    contact: one(waContacts, {
+      fields: [waConversations.contactId],
+      references: [waContacts.id],
     }),
-    messages: many(messages),
+    messages: many(waMessages),
   })
 );
 
-export const messagesRelations = relations(messages, ({ one, many }) => ({
-  conversation: one(conversations, {
-    fields: [messages.conversationId],
-    references: [conversations.id],
+export const waMessagesRelations = relations(waMessages, ({ one, many }) => ({
+  conversation: one(waConversations, {
+    fields: [waMessages.conversationId],
+    references: [waConversations.id],
   }),
-  contact: one(contacts, {
-    fields: [messages.contactId],
-    references: [contacts.id],
+  contact: one(waContacts, {
+    fields: [waMessages.contactId],
+    references: [waContacts.id],
   }),
-  mediaFiles: many(mediaFiles),
+  mediaFiles: many(waMediaFiles),
 }));
 
-export const mediaFilesRelations = relations(mediaFiles, ({ one }) => ({
-  message: one(messages, {
-    fields: [mediaFiles.messageId],
-    references: [messages.id],
+export const waMediaFilesRelations = relations(waMediaFiles, ({ one }) => ({
+  message: one(waMessages, {
+    fields: [waMediaFiles.messageId],
+    references: [waMessages.id],
   }),
 }));
 
 // Types
-export type Contact = typeof contacts.$inferSelect;
-export type NewContact = typeof contacts.$inferInsert;
-export type Conversation = typeof conversations.$inferSelect;
-export type NewConversation = typeof conversations.$inferInsert;
-export type Message = typeof messages.$inferSelect;
-export type NewMessage = typeof messages.$inferInsert;
-export type MediaFile = typeof mediaFiles.$inferSelect;
-export type WebhookLog = typeof webhookLogs.$inferSelect;
+export type Contact = typeof waContacts.$inferSelect;
+export type NewContact = typeof waContacts.$inferInsert;
+export type Conversation = typeof waConversations.$inferSelect;
+export type NewConversation = typeof waConversations.$inferInsert;
+export type Message = typeof waMessages.$inferSelect;
+export type NewMessage = typeof waMessages.$inferInsert;
+export type MediaFile = typeof waMediaFiles.$inferSelect;
+export type WebhookLog = typeof waWebhookLogs.$inferSelect;
 
 export type ConversationWithContact = Conversation & {
   contact: Contact;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
-import { conversations, messages, contacts } from '@/lib/db/whatsapp-schema';
+import { waConversations, waMessages, waContacts } from '@/lib/db/whatsapp-schema';
 import { emitSSE } from '@/lib/sse/emitter';
 import {
   sendTextMessage,
@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
     // Buscar conversa + contato
     const [conv] = await waDb
       .select()
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
+      .from(waConversations)
+      .where(eq(waConversations.id, conversationId))
       .limit(1);
 
     if (!conv) {
@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
 
     const [contact] = await waDb
       .select()
-      .from(contacts)
-      .where(eq(contacts.id, conv.contactId))
+      .from(waContacts)
+      .where(eq(waContacts.id, conv.contactId))
       .limit(1);
 
     if (!contact) {
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     // Salvar no banco
     const [saved] = await waDb
-      .insert(messages)
+      .insert(waMessages)
       .values({
         conversationId: conv.id,
         contactId: null,
@@ -95,13 +95,13 @@ export async function POST(req: NextRequest) {
 
     // Atualizar conversa
     await waDb
-      .update(conversations)
+      .update(waConversations)
       .set({
         lastMessage: msgBody || '[mídia]',
         lastMessageAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(conversations.id, conv.id));
+      .where(eq(waConversations.id, conv.id));
 
     // Emitir SSE
     emitSSE({

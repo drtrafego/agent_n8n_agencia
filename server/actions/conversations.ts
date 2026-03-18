@@ -2,39 +2,39 @@
 
 import { eq, desc } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
-import { conversations, contacts } from '@/lib/db/whatsapp-schema';
+import { waConversations, waContacts } from '@/lib/db/whatsapp-schema';
 
 export async function getOpenConversations() {
   return waDb
     .select({
-      id: conversations.id,
-      contactId: conversations.contactId,
-      status: conversations.status,
-      botActive: conversations.botActive,
-      unreadCount: conversations.unreadCount,
-      lastMessage: conversations.lastMessage,
-      lastMessageAt: conversations.lastMessageAt,
-      createdAt: conversations.createdAt,
-      updatedAt: conversations.updatedAt,
+      id: waConversations.id,
+      contactId: waConversations.contactId,
+      status: waConversations.status,
+      botActive: waConversations.botActive,
+      unreadCount: waConversations.unreadCount,
+      lastMessage: waConversations.lastMessage,
+      lastMessageAt: waConversations.lastMessageAt,
+      createdAt: waConversations.createdAt,
+      updatedAt: waConversations.updatedAt,
       contact: {
-        id: contacts.id,
-        waId: contacts.waId,
-        name: contacts.name,
-        phone: contacts.phone,
-        avatarUrl: contacts.avatarUrl,
-        createdAt: contacts.createdAt,
-        updatedAt: contacts.updatedAt,
+        id: waContacts.id,
+        waId: waContacts.waId,
+        name: waContacts.name,
+        phone: waContacts.phone,
+        avatarUrl: waContacts.avatarUrl,
+        createdAt: waContacts.createdAt,
+        updatedAt: waContacts.updatedAt,
       },
     })
-    .from(conversations)
-    .innerJoin(contacts, eq(conversations.contactId, contacts.id))
-    .where(eq(conversations.status, 'open'))
-    .orderBy(desc(conversations.lastMessageAt));
+    .from(waConversations)
+    .innerJoin(waContacts, eq(waConversations.contactId, waContacts.id))
+    .where(eq(waConversations.status, 'open'))
+    .orderBy(desc(waConversations.lastMessageAt));
 }
 
 export async function resolveConversation(conversationId: string) {
   return waDb
-    .update(conversations)
+    .update(waConversations)
     .set({ status: 'resolved', updatedAt: new Date() })
-    .where(eq(conversations.id, conversationId));
+    .where(eq(waConversations.id, conversationId));
 }

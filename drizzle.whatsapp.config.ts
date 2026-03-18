@@ -7,6 +7,7 @@ export default {
   schema: './lib/db/whatsapp-schema.ts',
   out: './lib/db/whatsapp-migrations',
   dialect: 'postgresql',
+  tablesFilter: ['wa_*'],
   dbCredentials: {
     url:
       process.env.WHATSAPP_DATABASE_URL ||

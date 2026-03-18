@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation';
 import { eq, asc, desc } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
 import {
-  conversations,
-  contacts,
-  messages,
+  waConversations,
+  waContacts,
+  waMessages,
 } from '@/lib/db/whatsapp-schema';
 import { ConversationList } from '@/components/inbox/ConversationList';
 import { ChatWindow } from '@/components/inbox/ChatWindow';
@@ -13,29 +13,29 @@ async function getConversations() {
   try {
     return await waDb
       .select({
-        id: conversations.id,
-        contactId: conversations.contactId,
-        status: conversations.status,
-        botActive: conversations.botActive,
-        unreadCount: conversations.unreadCount,
-        lastMessage: conversations.lastMessage,
-        lastMessageAt: conversations.lastMessageAt,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
+        id: waConversations.id,
+        contactId: waConversations.contactId,
+        status: waConversations.status,
+        botActive: waConversations.botActive,
+        unreadCount: waConversations.unreadCount,
+        lastMessage: waConversations.lastMessage,
+        lastMessageAt: waConversations.lastMessageAt,
+        createdAt: waConversations.createdAt,
+        updatedAt: waConversations.updatedAt,
         contact: {
-          id: contacts.id,
-          waId: contacts.waId,
-          name: contacts.name,
-          phone: contacts.phone,
-          avatarUrl: contacts.avatarUrl,
-          createdAt: contacts.createdAt,
-          updatedAt: contacts.updatedAt,
+          id: waContacts.id,
+          waId: waContacts.waId,
+          name: waContacts.name,
+          phone: waContacts.phone,
+          avatarUrl: waContacts.avatarUrl,
+          createdAt: waContacts.createdAt,
+          updatedAt: waContacts.updatedAt,
         },
       })
-      .from(conversations)
-      .innerJoin(contacts, eq(conversations.contactId, contacts.id))
-      .where(eq(conversations.status, 'open'))
-      .orderBy(desc(conversations.lastMessageAt));
+      .from(waConversations)
+      .innerJoin(waContacts, eq(waConversations.contactId, waContacts.id))
+      .where(eq(waConversations.status, 'open'))
+      .orderBy(desc(waConversations.lastMessageAt));
   } catch {
     return [];
   }
@@ -51,28 +51,28 @@ export default async function ChatPage({
   // Buscar conversa + contato
   const [conv] = await waDb
     .select({
-      id: conversations.id,
-      contactId: conversations.contactId,
-      status: conversations.status,
-      botActive: conversations.botActive,
-      unreadCount: conversations.unreadCount,
-      lastMessage: conversations.lastMessage,
-      lastMessageAt: conversations.lastMessageAt,
-      createdAt: conversations.createdAt,
-      updatedAt: conversations.updatedAt,
+      id: waConversations.id,
+      contactId: waConversations.contactId,
+      status: waConversations.status,
+      botActive: waConversations.botActive,
+      unreadCount: waConversations.unreadCount,
+      lastMessage: waConversations.lastMessage,
+      lastMessageAt: waConversations.lastMessageAt,
+      createdAt: waConversations.createdAt,
+      updatedAt: waConversations.updatedAt,
       contact: {
-        id: contacts.id,
-        waId: contacts.waId,
-        name: contacts.name,
-        phone: contacts.phone,
-        avatarUrl: contacts.avatarUrl,
-        createdAt: contacts.createdAt,
-        updatedAt: contacts.updatedAt,
+        id: waContacts.id,
+        waId: waContacts.waId,
+        name: waContacts.name,
+        phone: waContacts.phone,
+        avatarUrl: waContacts.avatarUrl,
+        createdAt: waContacts.createdAt,
+        updatedAt: waContacts.updatedAt,
       },
     })
-    .from(conversations)
-    .innerJoin(contacts, eq(conversations.contactId, contacts.id))
-    .where(eq(conversations.id, id))
+    .from(waConversations)
+    .innerJoin(waContacts, eq(waConversations.contactId, waContacts.id))
+    .where(eq(waConversations.id, id))
     .limit(1);
 
   if (!conv) notFound();
@@ -80,16 +80,16 @@ export default async function ChatPage({
   // Buscar últimas 100 mensagens
   const msgs = await waDb
     .select()
-    .from(messages)
-    .where(eq(messages.conversationId, id))
-    .orderBy(asc(messages.createdAt))
+    .from(waMessages)
+    .where(eq(waMessages.conversationId, id))
+    .orderBy(asc(waMessages.createdAt))
     .limit(100);
 
   // Zerar unread count
   await waDb
-    .update(conversations)
+    .update(waConversations)
     .set({ unreadCount: 0 })
-    .where(eq(conversations.id, id));
+    .where(eq(waConversations.id, id));
 
   const allConvs = await getConversations();
 

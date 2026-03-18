@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eq, asc } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
-import { messages } from '@/lib/db/whatsapp-schema';
+import { waMessages } from '@/lib/db/whatsapp-schema';
 
 export async function GET(
   _req: NextRequest,
@@ -12,9 +12,9 @@ export async function GET(
 
     const rows = await waDb
       .select()
-      .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(asc(messages.createdAt))
+      .from(waMessages)
+      .where(eq(waMessages.conversationId, conversationId))
+      .orderBy(asc(waMessages.createdAt))
       .limit(100);
 
     return NextResponse.json(rows);
