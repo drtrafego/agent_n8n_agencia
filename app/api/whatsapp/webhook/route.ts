@@ -211,10 +211,7 @@ export async function POST(req: NextRequest) {
                 value: {
                   messages: [msg],
                   contacts: parsed.contacts,
-                  metadata: {
-                    phone_number_id: process.env.META_PHONE_NUMBER_ID || '',
-                    display_phone_number: process.env.META_PHONE_NUMBER_ID || '',
-                  },
+                  metadata: parsed.value.metadata,
                 },
               }],
             }],
