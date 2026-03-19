@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@stackframe/stack": "^2.8.77",
     "@tailwindcss/postcss": "4.1.7",
     "@types/node": "^22.15.18",
     "@types/react": "19.1.4",

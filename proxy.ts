@@ -1,59 +1,47 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { signToken, verifyToken } from '@/lib/auth/session';
 
 const protectedRoutes = ['/inbox', '/settings', '/dashboard'];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get('session');
+
+  // Stack Auth handler routes — always allow
+  if (pathname.startsWith('/handler')) {
+    return NextResponse.next();
+  }
+
+  // WhatsApp webhook — public, no auth required
+  if (pathname.startsWith('/api/whatsapp/webhook')) {
+    return NextResponse.next();
+  }
+
+  // Stripe webhook — public, no auth required
+  if (pathname.startsWith('/api/stripe/webhook')) {
+    return NextResponse.next();
+  }
 
   const isProtectedRoute = protectedRoutes.some((r) =>
     pathname.startsWith(r)
   );
 
-  // Rotas da API do WhatsApp são públicas (webhook da Meta precisa acesso sem auth)
-  if (pathname.startsWith('/api/whatsapp/webhook')) {
-    return NextResponse.next();
+  // Stack Auth sets a cookie named "__stack-token" (or similar) — check for it
+  // If no Stack Auth session cookie, redirect to sign-in
+  const stackToken =
+    request.cookies.get('__stack-token')?.value ||
+    request.cookies.get('stack-token')?.value;
+
+  if (isProtectedRoute && !stackToken) {
+    return NextResponse.redirect(new URL('/handler/sign-in', request.url));
   }
 
-  if (isProtectedRoute && !sessionCookie) {
-    return NextResponse.redirect(new URL('/sign-in', request.url));
-  }
-
-  let res = NextResponse.next();
-
-  if (sessionCookie && request.method === 'GET') {
-    try {
-      const parsed = await verifyToken(sessionCookie.value);
-      const expiresInOneDay = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      res.cookies.set({
-        name: 'session',
-        value: await signToken({
-          ...parsed,
-          expires: expiresInOneDay.toISOString(),
-        }),
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        expires: expiresInOneDay,
-      });
-    } catch (error) {
-      console.error('Error updating session:', error);
-      res.cookies.delete('session');
-      if (isProtectedRoute) {
-        return NextResponse.redirect(new URL('/sign-in', request.url));
-      }
-    }
-  }
-
-  return res;
+  return NextResponse.next();
 }
 
 export { proxy as default };
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-  runtime: 'nodejs',
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
