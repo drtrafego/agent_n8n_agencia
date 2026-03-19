@@ -202,13 +202,23 @@ export async function POST(req: NextRequest) {
         unreadCount: conv.unreadCount + 1,
       });
 
-      // Se bot ativo → encaminhar para n8n
+      // Se bot ativo → encaminhar para n8n no formato que o workflow espera
       if (conv.botActive && process.env.N8N_WEBHOOK_URL) {
         const n8nPayload = JSON.stringify({
-          contact,
-          conversation: conv,
-          message: saved,
-          raw: msg,
+          body: {
+            entry: [{
+              changes: [{
+                value: {
+                  messages: [msg],
+                  contacts: parsed.contacts,
+                  metadata: {
+                    phone_number_id: process.env.META_PHONE_NUMBER_ID || '',
+                    display_phone_number: process.env.META_PHONE_NUMBER_ID || '',
+                  },
+                },
+              }],
+            }],
+          },
         });
 
         after(async () => {
