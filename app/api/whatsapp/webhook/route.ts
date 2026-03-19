@@ -205,17 +205,17 @@ export async function POST(req: NextRequest) {
       // Se bot ativo → encaminhar para n8n no formato que o workflow espera
       if (conv.botActive && process.env.N8N_WEBHOOK_URL) {
         const n8nPayload = JSON.stringify({
-          body: {
-            entry: [{
-              changes: [{
-                value: {
-                  messages: [msg],
-                  contacts: parsed.contacts,
-                  metadata: parsed.value.metadata,
-                },
-              }],
+          object: 'whatsapp_business_account',
+          entry: [{
+            changes: [{
+              value: {
+                messaging_product: 'whatsapp',
+                messages: [msg],
+                contacts: parsed.contacts,
+                metadata: parsed.value.metadata,
+              },
             }],
-          },
+          }],
         });
 
         after(async () => {
