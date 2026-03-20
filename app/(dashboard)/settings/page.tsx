@@ -103,7 +103,7 @@ export default function SettingsPage() {
               ['META_PHONE_NUMBER_ID', process.env.META_PHONE_NUMBER_ID],
               ['META_APP_SECRET', process.env.META_APP_SECRET],
               ['META_WEBHOOK_VERIFY_TOKEN', process.env.META_WEBHOOK_VERIFY_TOKEN],
-              ['WHATSAPP_DATABASE_URL / POSTGRES_URL', process.env.WHATSAPP_DATABASE_URL || process.env.POSTGRES_URL],
+              ['DATABASE_URL', process.env.DATABASE_URL],
               ['N8N_WEBHOOK_URL', process.env.N8N_WEBHOOK_URL],
               ['BLOB_READ_WRITE_TOKEN', process.env.BLOB_READ_WRITE_TOKEN],
             ].map(([key, value]) => (
