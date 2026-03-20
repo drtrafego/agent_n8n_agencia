@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { ConversationItem } from './ConversationItem';
@@ -20,7 +20,6 @@ export function ConversationList({ initialConversations }: ConversationListProps
 
   const activeId = pathname.split('/inbox/')[1] || '';
 
-  // SSE para atualizar lista em tempo real
   useSSE('all', (event: SSEEvent) => {
     if (event.type === 'conversation-update') {
       setConversations((prev) =>
@@ -31,18 +30,13 @@ export function ConversationList({ initialConversations }: ConversationListProps
                   ...c,
                   lastMessage: event.lastMessage,
                   lastMessageAt: new Date(event.lastMessageAt),
-                  unreadCount:
-                    c.id === activeId ? 0 : event.unreadCount,
+                  unreadCount: c.id === activeId ? 0 : event.unreadCount,
                 }
               : c
           )
           .sort((a, b) => {
-            const aTime = a.lastMessageAt
-              ? new Date(a.lastMessageAt).getTime()
-              : 0;
-            const bTime = b.lastMessageAt
-              ? new Date(b.lastMessageAt).getTime()
-              : 0;
+            const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+            const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
             return bTime - aTime;
           })
       );
@@ -51,9 +45,7 @@ export function ConversationList({ initialConversations }: ConversationListProps
     if (event.type === 'bot-toggle') {
       setConversations((prev) =>
         prev.map((c) =>
-          c.id === event.conversationId
-            ? { ...c, botActive: event.botActive }
-            : c
+          c.id === event.conversationId ? { ...c, botActive: event.botActive } : c
         )
       );
     }
@@ -70,17 +62,12 @@ export function ConversationList({ initialConversations }: ConversationListProps
   });
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-r border-zinc-800 bg-zinc-900">
+    <aside className="flex w-full md:w-80 md:shrink-0 flex-col border-r border-zinc-800 bg-zinc-900">
       {/* Header */}
       <div className="border-b border-zinc-800 px-4 py-4">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-100">
-          WhatsApp Inbox
-        </h2>
+        <h2 className="mb-3 text-sm font-semibold text-zinc-100">WhatsApp Inbox</h2>
         <div className="relative">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
-          />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}

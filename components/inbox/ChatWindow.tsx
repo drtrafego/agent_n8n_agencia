@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { BotToggle } from './BotToggle';
@@ -18,8 +19,8 @@ export function ChatWindow({ conversation, initialMessages }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [botActive, setBotActive] = useState(conversation.botActive);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
-  // Marcar como lido ao abrir
   useEffect(() => {
     fetch('/api/whatsapp/read', {
       method: 'PATCH',
@@ -28,16 +29,13 @@ export function ChatWindow({ conversation, initialMessages }: ChatWindowProps) {
     }).catch(console.error);
   }, [conversation.id]);
 
-  // Auto-scroll para o fim
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // SSE — escutar novas mensagens
   useSSE(conversation.id, (event: SSEEvent) => {
     if (event.type === 'message' && event.conversationId === conversation.id) {
       setMessages((prev) => {
-        // Evitar duplicatas
         const exists = prev.some((m) => m.id === (event.message as Message).id);
         if (exists) return prev;
         return [...prev, event.message as Message];
@@ -50,11 +48,20 @@ export function ChatWindow({ conversation, initialMessages }: ChatWindowProps) {
   });
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header do chat */}
+    <div className="flex flex-col h-full w-full">
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
+          {/* Botão voltar — apenas mobile */}
+          <button
+            onClick={() => router.push('/inbox')}
+            className="md:hidden flex items-center justify-center h-8 w-8 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+            aria-label="Voltar"
+          >
+            <ArrowLeft size={18} />
+          </button>
+
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white shrink-0">
             {(conversation.contact.name || conversation.contact.waId)[0].toUpperCase()}
           </div>
           <div>
@@ -97,10 +104,7 @@ export function ChatWindow({ conversation, initialMessages }: ChatWindowProps) {
       </div>
 
       {/* Input */}
-      <MessageInput
-        conversationId={conversation.id}
-        disabled={false}
-      />
+      <MessageInput conversationId={conversation.id} disabled={false} />
     </div>
   );
 }

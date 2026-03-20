@@ -40,18 +40,17 @@ export default async function InboxPage() {
   const convs = await getConversations();
 
   return (
-    <div className="flex h-[calc(100vh-57px)]">
+    <div className="flex h-[calc(100dvh-57px)] md:h-[calc(100vh-57px)]">
+      {/* Mobile: lista ocupa tela toda. Desktop: w-80 fixo */}
       <ConversationList initialConversations={convs} />
 
-      {/* Área vazia — selecione uma conversa */}
-      <div className="flex flex-1 items-center justify-center bg-zinc-950">
+      {/* Área vazia — só visível no desktop */}
+      <div className="hidden md:flex flex-1 items-center justify-center bg-zinc-950">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-800/50">
             <MessageSquare size={28} className="text-zinc-500" />
           </div>
-          <p className="text-sm font-medium text-zinc-400">
-            Selecione uma conversa
-          </p>
+          <p className="text-sm font-medium text-zinc-400">Selecione uma conversa</p>
           <p className="mt-1 text-xs text-zinc-600">
             Escolha uma conversa na lista ao lado para começar
           </p>

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, Settings, LogOut, Zap } from 'lucide-react';
+import { MessageSquare, Settings, LogOut, Bot } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,11 @@ import { cn } from '@/lib/utils';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+const NAV_ITEMS = [
+  { href: '/inbox', label: 'Inbox', icon: MessageSquare },
+  { href: '/settings', label: 'Config', icon: Settings },
+];
+
 function UserMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { data: user } = useSWR<User>('/api/user', fetcher);
@@ -31,12 +36,7 @@ function UserMenu() {
   }
 
   const initials = user?.name
-    ? user.name
-        .split(' ')
-        .slice(0, 2)
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
+    ? user.name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
     : user?.email?.[0].toUpperCase() ?? '?';
 
   return (
@@ -67,11 +67,6 @@ function UserMenu() {
   );
 }
 
-const NAV_ITEMS = [
-  { href: '/inbox', label: 'Inbox', icon: MessageSquare },
-  { href: '/settings', label: 'Config', icon: Settings },
-];
-
 function Header() {
   const pathname = usePathname();
 
@@ -80,13 +75,13 @@ function Header() {
       {/* Logo */}
       <Link href="/inbox" className="flex items-center gap-2">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600">
-          <Zap size={14} className="text-white" />
+          <Bot size={14} className="text-white" />
         </div>
-        <span className="text-sm font-semibold text-zinc-100">DR.TRÁFEGO</span>
+        <span className="text-sm font-semibold text-zinc-100">Agente 24 Horas</span>
       </Link>
 
-      {/* Nav */}
-      <nav className="flex items-center gap-1">
+      {/* Nav desktop */}
+      <nav className="hidden md:flex items-center gap-1">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
@@ -112,15 +107,36 @@ function Header() {
   );
 }
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function BottomNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t border-zinc-800 bg-zinc-950">
+      {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          className={cn(
+            'flex flex-1 flex-col items-center justify-center gap-1 py-3 text-[10px] font-medium transition-colors',
+            pathname.startsWith(href)
+              ? 'text-indigo-400'
+              : 'text-zinc-600 hover:text-zinc-400'
+          )}
+        >
+          <Icon size={20} />
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100">
       <Header />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-[57px] md:pb-0">{children}</main>
+      <BottomNav />
     </div>
   );
 }

@@ -48,7 +48,6 @@ export default async function ChatPage({
 }) {
   const { id } = await params;
 
-  // Buscar conversa + contato
   const [conv] = await waDb
     .select({
       id: waConversations.id,
@@ -77,7 +76,6 @@ export default async function ChatPage({
 
   if (!conv) notFound();
 
-  // Buscar últimas 100 mensagens
   const msgs = await waDb
     .select()
     .from(waMessages)
@@ -85,7 +83,6 @@ export default async function ChatPage({
     .orderBy(asc(waMessages.createdAt))
     .limit(100);
 
-  // Zerar unread count
   await waDb
     .update(waConversations)
     .set({ unreadCount: 0 })
@@ -94,9 +91,14 @@ export default async function ChatPage({
   const allConvs = await getConversations();
 
   return (
-    <div className="flex h-[calc(100vh-57px)]">
-      <ConversationList initialConversations={allConvs} />
-      <div className="flex-1 overflow-hidden">
+    <div className="flex h-[calc(100dvh-57px)] md:h-[calc(100vh-57px)]">
+      {/* Lista — escondida no mobile quando estiver em uma conversa */}
+      <div className="hidden md:flex md:w-80 md:shrink-0">
+        <ConversationList initialConversations={allConvs} />
+      </div>
+
+      {/* Chat — tela toda no mobile */}
+      <div className="flex flex-1 overflow-hidden">
         <ChatWindow conversation={conv} initialMessages={msgs} />
       </div>
     </div>
