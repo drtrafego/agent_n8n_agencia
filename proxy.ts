@@ -6,6 +6,11 @@ const protectedRoutes = ['/inbox', '/settings', '/dashboard'];
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Redirect root to inbox
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL('/inbox', request.url));
+  }
+
   // Stack Auth handler routes — always allow
   if (pathname.startsWith('/handler')) {
     return NextResponse.next();
