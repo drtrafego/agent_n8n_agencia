@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import { desc, eq } from 'drizzle-orm';
+import { stackServerApp } from '@/lib/stack';
 import { waDb } from '@/lib/db/whatsapp';
 import { waConversations, waContacts } from '@/lib/db/whatsapp-schema';
 import { ConversationList } from '@/components/inbox/ConversationList';
@@ -37,6 +39,9 @@ async function getConversations() {
 }
 
 export default async function InboxPage() {
+  const user = await stackServerApp.getUser();
+  if (!user) redirect('/sign-in');
+
   const convs = await getConversations();
 
   return (
