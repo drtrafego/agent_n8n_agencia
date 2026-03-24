@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, Settings, LogOut, Bot, BarChart3 } from 'lucide-react';
+import { MessageSquare, Settings, LogOut, Bot, BarChart3, Kanban } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const NAV_ITEMS = [
   { href: '/inbox', label: 'Inbox', icon: MessageSquare },
+  { href: '/crm', label: 'CRM', icon: Kanban },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/settings', label: 'Config', icon: Settings },
 ];
