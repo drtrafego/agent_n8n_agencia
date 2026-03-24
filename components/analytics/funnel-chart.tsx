@@ -1,34 +1,41 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-
 interface FunnelData {
   stage: string;
   value: number;
+  dropRate: number;
 }
 
-const COLORS = ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe'];
-
 export function FunnelChart({ data }: { data: FunnelData[] }) {
+  const maxValue = Math.max(...data.map((d) => d.value), 1);
+
   return (
-    <div className="w-full h-[250px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 80, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-          <XAxis type="number" stroke="#71717a" fontSize={12} />
-          <YAxis type="category" dataKey="stage" stroke="#71717a" fontSize={12} width={75} />
-          <Tooltip
-            contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }}
-            labelStyle={{ color: '#e4e4e7' }}
-            itemStyle={{ color: '#a5b4fc' }}
-          />
-          <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-            {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="space-y-3">
+      {data.map((item, i) => {
+        const widthPct = Math.max((item.value / maxValue) * 100, 8);
+        const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-amber-500', 'bg-emerald-500'];
+        const bgColors = ['bg-indigo-500/10', 'bg-blue-500/10', 'bg-amber-500/10', 'bg-emerald-500/10'];
+
+        return (
+          <div key={item.stage}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-zinc-400">{item.stage}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-zinc-200">{item.value}</span>
+                {i > 0 && item.dropRate > 0 && (
+                  <span className="text-[10px] text-red-400/80">-{item.dropRate}%</span>
+                )}
+              </div>
+            </div>
+            <div className={`w-full h-7 rounded-md ${bgColors[i]}`}>
+              <div
+                className={`h-full rounded-md ${colors[i]} transition-all duration-700`}
+                style={{ width: `${widthPct}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
