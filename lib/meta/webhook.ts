@@ -28,6 +28,14 @@ export type MetaContact = {
   wa_id: string;
 };
 
+export type MetaReferral = {
+  source_url?: string;
+  source_type?: string;
+  source_id?: string;
+  headline?: string;
+  body?: string;
+};
+
 export type MetaMessage = {
   from: string;
   id: string;
@@ -44,6 +52,7 @@ export type MetaMessage = {
   };
   audio?: { id: string; mime_type: string };
   video?: { id: string; mime_type: string; caption?: string };
+  referral?: MetaReferral;
 };
 
 export type MetaStatus = {

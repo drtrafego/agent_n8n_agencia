@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { after } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
 import {
   waContacts,
@@ -101,6 +101,10 @@ export async function POST(req: NextRequest) {
         .where(eq(waContacts.waId, waId))
         .limit(1);
 
+      // Detect referral (Click-to-WhatsApp ad)
+      const referral = msg.referral;
+      const source = referral?.source_type === 'ad' ? 'campanha' : 'direto';
+
       if (!contact) {
         const [created] = await waDb
           .insert(waContacts)
@@ -116,6 +120,17 @@ export async function POST(req: NextRequest) {
           .update(waContacts)
           .set({ name: profile.profile.name, updatedAt: new Date() })
           .where(eq(waContacts.id, contact.id));
+      }
+
+      // Save source in contacts table (n8n bot table)
+      if (referral || source === 'direto') {
+        await waDb.execute(
+          sql`INSERT INTO contacts (telefone, nome, source)
+              VALUES (${waId}, ${profile?.profile?.name ?? waId}, ${source})
+              ON CONFLICT (telefone) DO UPDATE SET
+                source = CASE WHEN contacts.source IS NULL OR contacts.source = 'direto' THEN ${source} ELSE contacts.source END,
+                nome = COALESCE(NULLIF(${profile?.profile?.name ?? ''}, ''), contacts.nome)`
+        );
       }
 
       // Upsert conversa
