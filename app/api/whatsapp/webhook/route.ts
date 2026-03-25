@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   if (
     mode === 'subscribe' &&
-    token === process.env.META_WEBHOOK_VERIFY_TOKEN
+    token === (process.env.META_WEBHOOK_VERIFY_TOKEN || '').trim()
   ) {
     return new Response(challenge, { status: 200 });
   }
@@ -61,17 +61,9 @@ export async function POST(req: NextRequest) {
         crypto.createHmac('sha256', secret).update(body).digest('hex');
 
       if (sig !== computedExpected) {
-        console.error('[webhook] SIG FAIL', JSON.stringify({
-          sigFirst: sig.substring(0, 15),
-          expFirst: computedExpected.substring(0, 15),
-          secretFirst: secret.substring(0, 6),
-          secretLen: secret.length,
-          bodyLen: body.length,
-        }));
         return new Response('Unauthorized', { status: 401 });
       }
     }
-    console.log('[webhook] OK bodyLen=' + body.length);
 
     payload = JSON.parse(body);
   } catch {
