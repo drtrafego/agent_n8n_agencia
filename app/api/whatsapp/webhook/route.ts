@@ -101,9 +101,10 @@ export async function POST(req: NextRequest) {
         .where(eq(waContacts.waId, waId))
         .limit(1);
 
-      // Detect referral (Click-to-WhatsApp ad)
+      // Detect referral — tudo que chega aqui é WhatsApp
+      // Click-to-WhatsApp ad → 'whatsapp_campanha', direto → 'whatsapp'
       const referral = msg.referral;
-      const source = referral?.source_type === 'ad' ? 'campanha' : 'direto';
+      const source = referral?.source_type === 'ad' ? 'whatsapp_campanha' : 'whatsapp';
 
       if (!contact) {
         const [created] = await waDb
@@ -123,15 +124,19 @@ export async function POST(req: NextRequest) {
       }
 
       // Save source in contacts table (n8n bot table)
-      if (referral || source === 'direto') {
-        await waDb.execute(
-          sql`INSERT INTO contacts (telefone, nome, source)
-              VALUES (${waId}, ${profile?.profile?.name ?? waId}, ${source})
-              ON CONFLICT (telefone) DO UPDATE SET
-                source = CASE WHEN contacts.source IS NULL OR contacts.source = 'direto' THEN ${source} ELSE contacts.source END,
-                nome = COALESCE(NULLIF(${profile?.profile?.name ?? ''}, ''), contacts.nome)`
-        );
-      }
+      // whatsapp_campanha sobrescreve whatsapp, mas nenhum sobrescreve google/meta
+      await waDb.execute(
+        sql`INSERT INTO contacts (telefone, nome, source)
+            VALUES (${waId}, ${profile?.profile?.name ?? waId}, ${source})
+            ON CONFLICT (telefone) DO UPDATE SET
+              source = CASE
+                WHEN contacts.source IS NULL THEN ${source}
+                WHEN contacts.source = 'whatsapp' AND ${source} = 'whatsapp_campanha' THEN ${source}
+                WHEN contacts.source = 'direto' THEN ${source}
+                ELSE contacts.source
+              END,
+              nome = COALESCE(NULLIF(${profile?.profile?.name ?? ''}, ''), contacts.nome)`
+      );
 
       // Upsert conversa
       let [conv] = await waDb
