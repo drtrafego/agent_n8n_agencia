@@ -47,10 +47,10 @@ export async function GET() {
     await db.execute(sql`
       UPDATE contacts SET
         stage = CASE
-          WHEN observacoes_sdr ILIKE '%agendad%' OR observacoes_sdr ILIKE '%convite disparado%' OR observacoes_sdr ILIKE '%call agendada%' THEN 'agendado'
-          WHEN observacoes_sdr ILIKE '%sem interesse%' THEN 'sem_interesse'
-          WHEN observacoes_sdr ILIKE '%email%' OR observacoes_sdr ILIKE '%qualificand%' THEN 'interesse'
-          WHEN LENGTH(observacoes_sdr) > 20 THEN 'qualificando'
+          WHEN observacoes_sdr ILIKE '%Status: agendado%' OR observacoes_sdr ILIKE '%convite disparado%' OR observacoes_sdr ILIKE '%call agendada%' THEN 'agendado'
+          WHEN observacoes_sdr ILIKE '%Status: sem interesse%' OR observacoes_sdr ILIKE '%sem interesse%' THEN 'sem_interesse'
+          WHEN observacoes_sdr ILIKE '%Status: interesse%' OR observacoes_sdr ILIKE '%pediu para agendar%' OR observacoes_sdr ILIKE '%escolheu hor%' THEN 'interesse'
+          WHEN observacoes_sdr ILIKE '%Status: qualificando%' OR LENGTH(observacoes_sdr) > 20 THEN 'qualificando'
           ELSE stage
         END,
         nicho = CASE
