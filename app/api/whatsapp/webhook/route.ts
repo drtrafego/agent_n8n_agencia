@@ -54,16 +54,24 @@ export async function POST(req: NextRequest) {
         .update(body)
         .digest('hex');
 
-    if (process.env.META_APP_SECRET && sig !== expected) {
-      console.error('[webhook] Signature mismatch', {
-        received: sig.substring(0, 20) + '...',
-        expected: expected.substring(0, 20) + '...',
-        hasSecret: !!process.env.META_APP_SECRET,
-        bodyLen: body.length,
-      });
-      return new Response('Unauthorized', { status: 401 });
+    const secret = (process.env.META_APP_SECRET || '').trim();
+    if (secret) {
+      const computedExpected =
+        'sha256=' +
+        crypto.createHmac('sha256', secret).update(body).digest('hex');
+
+      if (sig !== computedExpected) {
+        console.error('[webhook] SIG FAIL', JSON.stringify({
+          sigFirst: sig.substring(0, 15),
+          expFirst: computedExpected.substring(0, 15),
+          secretFirst: secret.substring(0, 6),
+          secretLen: secret.length,
+          bodyLen: body.length,
+        }));
+        return new Response('Unauthorized', { status: 401 });
+      }
     }
-    console.log('[webhook] POST received, sig OK, bodyLen:', body.length);
+    console.log('[webhook] OK bodyLen=' + body.length);
 
     payload = JSON.parse(body);
   } catch {
