@@ -55,8 +55,15 @@ export async function POST(req: NextRequest) {
         .digest('hex');
 
     if (process.env.META_APP_SECRET && sig !== expected) {
+      console.error('[webhook] Signature mismatch', {
+        received: sig.substring(0, 20) + '...',
+        expected: expected.substring(0, 20) + '...',
+        hasSecret: !!process.env.META_APP_SECRET,
+        bodyLen: body.length,
+      });
       return new Response('Unauthorized', { status: 401 });
     }
+    console.log('[webhook] POST received, sig OK, bodyLen:', body.length);
 
     payload = JSON.parse(body);
   } catch {
