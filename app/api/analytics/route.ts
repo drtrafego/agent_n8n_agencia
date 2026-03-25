@@ -192,7 +192,20 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================
-    // 11. RECENT LEADS
+    // 11. SOURCE BREAKDOWN
+    // ============================================
+    const sourceBreakdown = await db.execute<{ source: string; count: string }>(
+      sql`SELECT
+            COALESCE(source, 'direto') as source,
+            COUNT(*) as count
+          FROM contacts
+          WHERE created_at >= ${sinceDate}
+          GROUP BY source
+          ORDER BY count DESC`
+    );
+
+    // ============================================
+    // 12. RECENT LEADS
     // ============================================
     let statusWhere = sql`1=1`;
     if (statusFilter === 'agendado') statusWhere = sql`(ct.observacoes_sdr ILIKE '%agendad%' OR ct.observacoes_sdr ILIKE '%convite disparado%')`;
@@ -204,6 +217,7 @@ export async function GET(req: NextRequest) {
       id: string; name: string; phone: string; last_message: string;
       last_message_at: string; status: string; observacoes: string;
       msg_count: string; first_contact: string; conversation_id: string;
+      source: string | null;
     }>(
       sql`SELECT
             wc.id,
@@ -220,7 +234,8 @@ export async function GET(req: NextRequest) {
             COALESCE(ct.observacoes_sdr, '') as observacoes,
             COALESCE((SELECT COUNT(*) FROM wa_messages m WHERE m.conversation_id = conv.id), 0) as msg_count,
             wc.created_at as first_contact,
-            conv.id as conversation_id
+            conv.id as conversation_id,
+            ct.source
           FROM wa_contacts wc
           JOIN wa_conversations conv ON conv.contact_id = wc.id
           LEFT JOIN contacts ct ON ct.telefone = wc.wa_id
@@ -276,6 +291,7 @@ export async function GET(req: NextRequest) {
         { stage: 'Agendaram', value: scheduledCount, dropRate: interestedCount > 0 ? Math.round(((interestedCount - scheduledCount) / interestedCount) * 100) : 0 },
       ],
       statusBreakdown: (leadStatuses || []).map((s) => ({ status: s.status, count: Number(s.count) })),
+      sourceBreakdown: (sourceBreakdown || []).map((s) => ({ source: s.source || 'direto', count: Number(s.count) })),
       niches: (nicheData || []).map((n) => ({ niche: n.niche, count: Number(n.count) })),
       dailyMessages: (dailyMessages || []).map((d) => ({ date: d.date, inbound: Number(d.inbound), outbound: Number(d.outbound), total: Number(d.total) })),
       dailyLeads: (dailyLeads || []).map((d) => ({ date: d.date, count: Number(d.count) })),

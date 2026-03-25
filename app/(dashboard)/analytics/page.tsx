@@ -8,10 +8,11 @@ import { DailyChart } from '@/components/analytics/daily-chart';
 import { StatusChart } from '@/components/analytics/status-chart';
 import { HeatmapChart } from '@/components/analytics/heatmap-chart';
 import { NicheChart } from '@/components/analytics/niche-chart';
+import { SourceChart } from '@/components/analytics/source-chart';
 import { LeadsTable } from '@/components/analytics/leads-table';
 import {
   Users, MessageSquare, CalendarCheck, Clock, TrendingUp, Percent,
-  Zap, BarChart3, Target, Timer,
+  Zap, BarChart3, Target, Timer, Globe,
 } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -142,10 +143,10 @@ export default function AnalyticsPage() {
         )}
       </div>
 
-      {/* Row 1: Funnel + Status + Niches */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Row 1: Funnel + Status + Source + Niches */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[320px]" />)
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[320px]" />)
         ) : (
           <>
             <Card className="bg-zinc-900/80 border-zinc-800">
@@ -171,6 +172,18 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <StatusChart data={data?.statusBreakdown || []} />
+              </CardContent>
+            </Card>
+
+            <Card className="bg-zinc-900/80 border-zinc-800">
+              <CardHeader className="pb-1">
+                <CardTitle className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-cyan-400" />
+                  Origem dos Leads
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SourceChart data={data?.sourceBreakdown || []} />
               </CardContent>
             </Card>
 
