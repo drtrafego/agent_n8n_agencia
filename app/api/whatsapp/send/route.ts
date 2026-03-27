@@ -103,11 +103,18 @@ export async function POST(req: NextRequest) {
       })
       .where(eq(waConversations.id, conv.id));
 
-    // Emitir SSE
+    // Emitir SSE — notificar tanto o chat aberto quanto a lista de conversas
     emitSSE({
       type: 'message',
       conversationId: conv.id,
       message: saved as Record<string, unknown>,
+    });
+    emitSSE({
+      type: 'conversation-update',
+      conversationId: conv.id,
+      lastMessage: msgBody || '[mídia]',
+      lastMessageAt: new Date().toISOString(),
+      unreadCount: 0,
     });
 
     return NextResponse.json({ ok: true, message: saved });

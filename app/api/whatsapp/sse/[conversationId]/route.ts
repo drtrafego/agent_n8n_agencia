@@ -17,7 +17,10 @@ export async function GET(
       controller.enqueue(encoder.encode(': heartbeat\n\n'));
 
       const send = (event: SSEEvent) => {
+        // 'all' subscription receives every event; specific subscription
+        // receives only its own conversation + broadcasts to 'all'
         const relevant =
+          conversationId === 'all' ||
           event.conversationId === conversationId ||
           event.conversationId === 'all';
         if (!relevant) return;
