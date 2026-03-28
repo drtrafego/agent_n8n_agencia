@@ -6,6 +6,7 @@ import {
   integer,
   timestamp,
   jsonb,
+  doublePrecision,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
@@ -66,6 +67,20 @@ export const waMediaFiles = pgTable('wa_media_files', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const waTokenUsageLogs = pgTable('wa_token_usage_logs', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  executionId: text('execution_id').notNull().unique(),
+  workflowId: text('workflow_id').notNull(),
+  workflowName: text('workflow_name'),
+  promptTokens: integer('prompt_tokens').notNull().default(0),
+  completionTokens: integer('completion_tokens').notNull().default(0),
+  totalTokens: integer('total_tokens').notNull().default(0),
+  model: text('model'),
+  estimatedCostUsd: doublePrecision('estimated_cost_usd'),
+  executedAt: timestamp('executed_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const waWebhookLogs = pgTable('wa_webhook_logs', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   payload: jsonb('payload'),
@@ -119,6 +134,7 @@ export type Message = typeof waMessages.$inferSelect;
 export type NewMessage = typeof waMessages.$inferInsert;
 export type MediaFile = typeof waMediaFiles.$inferSelect;
 export type WebhookLog = typeof waWebhookLogs.$inferSelect;
+export type TokenUsageLog = typeof waTokenUsageLogs.$inferSelect;
 
 export type ConversationWithContact = Conversation & {
   contact: Contact;

@@ -1,9 +1,8 @@
 'use client';
 
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Check, CheckCheck, FileText, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatTime } from '@/lib/dateUtils';
 import type { Message } from '@/lib/db/whatsapp-schema';
 
 interface MessageBubbleProps {
@@ -100,7 +99,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         )}
       >
         <span className="text-[10px] text-zinc-600">
-          {format(new Date(message.createdAt), 'HH:mm', { locale: ptBR })}
+          {formatTime(message.createdAt)}
         </span>
         {!isInbound && <StatusIcon status={message.status} />}
       </div>

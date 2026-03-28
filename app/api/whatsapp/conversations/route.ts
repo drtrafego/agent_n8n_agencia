@@ -11,11 +11,13 @@ export async function GET(req: NextRequest) {
     const rows = await waDb
       .select({
         id: waConversations.id,
+        contactId: waConversations.contactId,
         status: waConversations.status,
         botActive: waConversations.botActive,
         unreadCount: waConversations.unreadCount,
         lastMessage: waConversations.lastMessage,
         lastMessageAt: waConversations.lastMessageAt,
+        createdAt: waConversations.createdAt,
         updatedAt: waConversations.updatedAt,
         contact: {
           id: waContacts.id,
@@ -23,6 +25,8 @@ export async function GET(req: NextRequest) {
           name: waContacts.name,
           phone: waContacts.phone,
           avatarUrl: waContacts.avatarUrl,
+          createdAt: waContacts.createdAt,
+          updatedAt: waContacts.updatedAt,
         },
       })
       .from(waConversations)

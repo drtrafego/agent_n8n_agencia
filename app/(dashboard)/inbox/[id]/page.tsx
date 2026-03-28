@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { notFound } from 'next/navigation';
 import { eq, asc, desc } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';

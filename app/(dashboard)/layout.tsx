@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, Settings, LogOut, Bot, BarChart3, Kanban } from 'lucide-react';
+import { MessageSquare, Settings, LogOut, Bot, BarChart3, Kanban, Activity, Cpu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,8 @@ const NAV_ITEMS = [
   { href: '/inbox', label: 'Inbox', icon: MessageSquare },
   { href: '/crm', label: 'CRM', icon: Kanban },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/tokens', label: 'Tokens', icon: Cpu },
+  { href: '/logs', label: 'Logs', icon: Activity },
   { href: '/settings', label: 'Config', icon: Settings },
 ];
 

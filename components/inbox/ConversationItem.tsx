@@ -1,10 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatRelativeShort } from '@/lib/dateUtils';
 import type { ConversationWithContact } from '@/lib/db/whatsapp-schema';
 
 interface ConversationItemProps {
@@ -44,10 +43,7 @@ export function ConversationItem({
   const avatarColor = getAvatarColor(conversation.contact.id);
 
   const timeAgo = conversation.lastMessageAt
-    ? formatDistanceToNow(new Date(conversation.lastMessageAt), {
-        locale: ptBR,
-        addSuffix: false,
-      })
+    ? formatRelativeShort(conversation.lastMessageAt)
     : null;
 
   return (

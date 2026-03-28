@@ -7,8 +7,19 @@ import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
 import { BotToggle } from './BotToggle';
 import { useSSE } from './SSEListener';
+import { toLocalDateKey, getDaySeparatorLabel } from '@/lib/dateUtils';
 import type { Message, Conversation, Contact } from '@/lib/db/whatsapp-schema';
 import type { SSEEvent } from '@/lib/sse/emitter';
+
+function DateSeparator({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center my-2">
+      <span className="bg-zinc-800 text-zinc-400 text-[11px] font-medium px-3 py-1 rounded-full select-none">
+        {label}
+      </span>
+    </div>
+  );
+}
 
 interface ChatWindowProps {
   conversation: Conversation & { contact: Contact };
@@ -21,7 +32,17 @@ export function ChatWindow({ conversation, initialMessages }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // Buscar mensagens atualizadas ao montar (evita cache do SSR)
   useEffect(() => {
+    fetch(`/api/whatsapp/messages/${conversation.id}`)
+      .then((r) => r.json())
+      .then((fresh: Message[]) => {
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          setMessages(fresh);
+        }
+      })
+      .catch(console.error);
+
     fetch('/api/whatsapp/read', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -96,9 +117,20 @@ export function ChatWindow({ conversation, initialMessages }: ChatWindowProps) {
               Nenhuma mensagem ainda
             </p>
           )}
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))}
+          {messages.map((msg, index) => {
+            const currentDay = toLocalDateKey(msg.createdAt);
+            const prevDay = index > 0 ? toLocalDateKey(messages[index - 1].createdAt) : null;
+            const showSeparator = currentDay !== prevDay;
+
+            return (
+              <div key={msg.id} className="flex flex-col gap-3">
+                {showSeparator && (
+                  <DateSeparator label={getDaySeparatorLabel(currentDay)} />
+                )}
+                <MessageBubble message={msg} />
+              </div>
+            );
+          })}
           <div ref={bottomRef} />
         </div>
       </div>

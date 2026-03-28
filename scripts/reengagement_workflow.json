@@ -1,0 +1,462 @@
+{
+  "name": "Reengagement Bot - Followup Diario",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 13,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "reeng-schedule",
+      "name": "Trigger 10h BRT",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "notes": "Dispara diariamente as 10h BRT (13:00 UTC)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH last_inbound AS (\n  SELECT\n    wc.id AS conversation_id,\n    wc.contact_id,\n    wc.bot_active,\n    wc.status AS conv_status,\n    wc.last_message,\n    wc.last_message_at,\n    co.wa_id,\n    c.id AS crm_contact_id,\n    c.nome,\n    c.telefone,\n    c.stage,\n    c.observacoes_sdr,\n    c.followup_count,\n    c.last_bot_msg_at,\n    c.last_lead_msg_at,\n    -- ultima mensagem inbound do lead\n    (\n      SELECT MAX(wm.created_at)\n      FROM wa_messages wm\n      WHERE wm.conversation_id = wc.id\n        AND wm.direction = 'inbound'\n    ) AS last_inbound_at,\n    -- ultima mensagem outbound do bot\n    (\n      SELECT MAX(wm.created_at)\n      FROM wa_messages wm\n      WHERE wm.conversation_id = wc.id\n        AND wm.direction = 'outbound'\n    ) AS last_outbound_at\n  FROM wa_conversations wc\n  JOIN wa_contacts co ON co.id = wc.contact_id\n  JOIN contacts c ON c.telefone = co.wa_id\n  WHERE wc.bot_active = true\n    AND wc.status = 'open'\n    AND c.stage NOT IN ('agendado', 'agendou', 'fechou', 'perdido')\n    AND c.followup_count < 3\n)\nSELECT *\nFROM last_inbound\nWHERE (\n  -- Caso 1: Bot mandou ultima msg e lead nao respondeu em 24-48h\n  (last_outbound_at > COALESCE(last_inbound_at, '1970-01-01'::timestamp)\n   AND last_outbound_at < NOW() - INTERVAL '24 hours'\n   AND last_outbound_at > NOW() - INTERVAL '72 hours')\n  OR\n  -- Caso 2: Lead mandou msg mas bot nao respondeu (edge case)\n  (last_inbound_at IS NOT NULL\n   AND last_inbound_at > COALESCE(last_outbound_at, '1970-01-01'::timestamp)\n   AND last_inbound_at < NOW() - INTERVAL '24 hours'\n   AND last_inbound_at > NOW() - INTERVAL '72 hours')\n  OR\n  -- Caso 3: Conversa nova sem resposta do lead apos primeira msg do bot\n  (last_inbound_at IS NULL\n   AND last_outbound_at IS NOT NULL\n   AND last_outbound_at < NOW() - INTERVAL '24 hours'\n   AND last_outbound_at > NOW() - INTERVAL '72 hours')\n)\nORDER BY last_outbound_at ASC\nLIMIT 50;",
+        "options": {}
+      },
+      "id": "reeng-query-eligible",
+      "name": "Buscar Leads Elegiveis",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [240, 0],
+      "credentials": {
+        "postgres": {
+          "id": "qjAlzv5GyfH3869u",
+          "name": "Postgres agent-n8n-agencia"
+        }
+      },
+      "notes": "Busca leads que nao responderam em 24-72h, com bot ativo, nao em estagio final, e com menos de 3 followups"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "reeng-filter-has-results",
+              "leftValue": "={{ $json.conversation_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "reeng-filter-results",
+      "name": "Tem Leads?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [480, 0],
+      "notes": "Filtra se ha resultados da query"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "reeng-set-phone",
+              "name": "phone",
+              "value": "={{ $json.telefone }}",
+              "type": "string"
+            },
+            {
+              "id": "reeng-set-nome",
+              "name": "nome",
+              "value": "={{ $json.nome || 'amigo' }}",
+              "type": "string"
+            },
+            {
+              "id": "reeng-set-stage",
+              "name": "stage",
+              "value": "={{ $json.stage }}",
+              "type": "string"
+            },
+            {
+              "id": "reeng-set-obs",
+              "name": "observacoes",
+              "value": "={{ $json.observacoes_sdr || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "reeng-set-lastmsg",
+              "name": "last_message",
+              "value": "={{ $json.last_message || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "reeng-set-convid",
+              "name": "conversation_id",
+              "value": "={{ $json.conversation_id }}",
+              "type": "string"
+            },
+            {
+              "id": "reeng-set-crmid",
+              "name": "crm_contact_id",
+              "value": "={{ $json.crm_contact_id }}",
+              "type": "number"
+            },
+            {
+              "id": "reeng-set-followup",
+              "name": "followup_count",
+              "value": "={{ $json.followup_count }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "reeng-prepare-data",
+      "name": "Preparar Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 0],
+      "notes": "Prepara campos para o template de reengagement"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.stage }}",
+                    "rightValue": "novo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "novo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.stage }}",
+                    "rightValue": "qualificando",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "qualificando"
+            }
+          ],
+          "fallbackOutput": {
+            "renameOutput": true,
+            "outputKey": "outros"
+          }
+        },
+        "options": {
+          "allMatchingOutputs": false
+        }
+      },
+      "id": "reeng-switch-stage",
+      "name": "Qual Etapa?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [960, 0],
+      "notes": "Roteia por etapa do funil para personalizar a mensagem"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "reeng-msg-novo",
+              "name": "reengagement_message",
+              "value": "={{ [\n  `Oi ${$json.nome}! Tudo bem? Vi que voce demonstrou interesse no nosso Agente de IA 24 horas. Posso te explicar rapidinho como ele funciona no seu negocio? Leva menos de 2 minutos! 😊`,\n  `E ai ${$json.nome}, beleza? Ainda ta pensando em como um Agente de IA pode te ajudar? Tenho cases bem legais pra te mostrar! Me conta qual seu segmento que eu te mostro o que ele faz na pratica 🚀`,\n  `${$json.nome}, lembrei de voce! Vi que voce entrou em contato sobre nosso Agente IA. Se quiser, posso te mandar um video rapido mostrando como ele atende clientes automaticamente no WhatsApp. Quer ver? 👀`\n][Math.floor(Math.random() * 3)] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "reeng-msg-novo",
+      "name": "Msg Novo Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1200, -120],
+      "notes": "Template de reengagement para leads novos que nao responderam"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "reeng-msg-qualificando",
+              "name": "reengagement_message",
+              "value": "={{ [\n  `Oi ${$json.nome}! Estavamos conversando sobre como o Agente IA pode ajudar no seu negocio. Ficou alguma duvida? Posso esclarecer qualquer ponto! 😊`,\n  `${$json.nome}, boa! Lembrei da nossa conversa. Se quiser, posso te mostrar como o Agente IA atenderia seus clientes na pratica. Posso agendar uma demonstracao rapida pra voce? 📅`,\n  `E ai ${$json.nome}! Continuando de onde paramos — qual a maior dor que voce tem hoje no atendimento ao cliente? Porque o Agente IA resolve exatamente isso 24h por dia, sem voce precisar ficar no celular! 💪`\n][Math.floor(Math.random() * 3)] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "reeng-msg-qualificando",
+      "name": "Msg Qualificando",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1200, 80],
+      "notes": "Template de reengagement para leads em qualificacao"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "reeng-msg-outros",
+              "name": "reengagement_message",
+              "value": "={{ `Oi ${$json.nome}! Tudo bem? So passando pra ver se voce tem alguma duvida sobre o Agente de IA. Estou aqui pra te ajudar! 😊` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "reeng-msg-outros",
+      "name": "Msg Outros",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1200, 260],
+      "notes": "Template generico de reengagement para outras etapas"
+    },
+    {
+      "parameters": {
+        "url": "https://agente.casaldotrafego.com/api/whatsapp/bot-send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $json.phone, body: $json.reengagement_message }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "reeng-send-msg",
+      "name": "Enviar Reengagement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 80],
+      "notes": "Envia a mensagem de reengagement via bot-send endpoint (que salva no banco e envia via Meta API)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE contacts\nSET\n  followup_count = followup_count + 1,\n  last_bot_msg_at = NOW(),\n  updated_at = NOW(),\n  observacoes_sdr = COALESCE(observacoes_sdr, '') || E'\\nFollowup #' || (followup_count + 1) || ' enviado em ' || TO_CHAR(NOW() AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') || '.'\nWHERE id = {{ $json.crm_contact_id }};",
+        "options": {}
+      },
+      "id": "reeng-mark-sent",
+      "name": "Marcar Followup Enviado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1680, 80],
+      "credentials": {
+        "postgres": {
+          "id": "qjAlzv5GyfH3869u",
+          "name": "Postgres agent-n8n-agencia"
+        }
+      },
+      "notes": "Incrementa followup_count e registra nas observacoes_sdr para nao reenviar e manter historico"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "reeng-done",
+      "name": "Concluido",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1920, 80],
+      "notes": "Fim do fluxo"
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "reeng-wait-throttle",
+      "name": "Esperar 3s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1440, 260],
+      "notes": "Throttle para nao sobrecarregar a API (3s entre cada envio). Conectar output do Marcar Followup aqui se precisar loop."
+    }
+  ],
+  "connections": {
+    "Trigger 10h BRT": {
+      "main": [
+        [
+          {
+            "node": "Buscar Leads Elegiveis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Leads Elegiveis": {
+      "main": [
+        [
+          {
+            "node": "Tem Leads?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Leads?": {
+      "main": [
+        [
+          {
+            "node": "Preparar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Dados": {
+      "main": [
+        [
+          {
+            "node": "Qual Etapa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qual Etapa?": {
+      "main": [
+        [
+          {
+            "node": "Msg Novo Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg Qualificando",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg Outros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg Novo Lead": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reengagement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg Qualificando": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reengagement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg Outros": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reengagement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Reengagement": {
+      "main": [
+        [
+          {
+            "node": "Marcar Followup Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Followup Enviado": {
+      "main": [
+        [
+          {
+            "node": "Concluido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "reengagement"
+    },
+    {
+      "name": "followup"
+    }
+  ],
+  "triggerCount": 1,
+  "pinData": {}
+}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { waDb } from '@/lib/db/whatsapp';
 import { waConversations, waMessages, waContacts } from '@/lib/db/whatsapp-schema';
 import { emitSSE } from '@/lib/sse/emitter';
@@ -72,6 +72,15 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date(),
       })
       .where(eq(waConversations.id, conv.id));
+
+    // Atualizar last_bot_msg_at na tabela CRM (usada pelo reengagement)
+    try {
+      await waDb.execute(
+        sql`UPDATE contacts SET last_bot_msg_at = NOW() WHERE telefone = ${waId}`
+      );
+    } catch {
+      // não bloqueia o fluxo se a tabela contacts não existir
+    }
 
     // Emitir SSE para atualizar frontend em tempo real
     emitSSE({

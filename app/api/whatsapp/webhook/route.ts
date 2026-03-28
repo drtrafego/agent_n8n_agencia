@@ -126,8 +126,8 @@ export async function POST(req: NextRequest) {
       // Save source in contacts table (n8n bot table)
       // whatsapp_campanha sobrescreve whatsapp, mas nenhum sobrescreve google/meta
       await waDb.execute(
-        sql`INSERT INTO contacts (telefone, nome, source)
-            VALUES (${waId}, ${profile?.profile?.name ?? waId}, ${source})
+        sql`INSERT INTO contacts (telefone, nome, source, last_lead_msg_at)
+            VALUES (${waId}, ${profile?.profile?.name ?? waId}, ${source}, NOW())
             ON CONFLICT (telefone) DO UPDATE SET
               source = CASE
                 WHEN contacts.source IS NULL THEN ${source}
@@ -135,7 +135,8 @@ export async function POST(req: NextRequest) {
                 WHEN contacts.source = 'direto' THEN ${source}
                 ELSE contacts.source
               END,
-              nome = COALESCE(NULLIF(${profile?.profile?.name ?? ''}, ''), contacts.nome)`
+              nome = COALESCE(NULLIF(${profile?.profile?.name ?? ''}, ''), contacts.nome),
+              last_lead_msg_at = NOW()`
       );
 
       // Upsert conversa

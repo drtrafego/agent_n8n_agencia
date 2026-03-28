@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, RefreshCw } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { ConversationItem } from './ConversationItem';
 import { useSSE } from './SSEListener';
@@ -16,7 +16,30 @@ export function ConversationList({ initialConversations }: ConversationListProps
   const [conversations, setConversations] =
     useState<ConversationWithContact[]>(initialConversations);
   const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const pathname = usePathname();
+
+  const refreshConversations = useCallback(async (silent = true) => {
+    if (!silent) setRefreshing(true);
+    try {
+      const res = await fetch('/api/whatsapp/conversations');
+      if (res.ok) {
+        const data: ConversationWithContact[] = await res.json();
+        setConversations(data);
+      }
+    } catch {
+      // silencioso
+    } finally {
+      if (!silent) setRefreshing(false);
+    }
+  }, []);
+
+  // Refresh automático a cada 30s para não depender só do SSE
+  useEffect(() => {
+    refreshConversations(true);
+    const timer = setInterval(() => refreshConversations(true), 30_000);
+    return () => clearInterval(timer);
+  }, [refreshConversations]);
 
   const activeId = pathname.split('/inbox/')[1] || '';
 
@@ -65,7 +88,17 @@ export function ConversationList({ initialConversations }: ConversationListProps
     <aside className="flex w-full md:w-80 md:shrink-0 flex-col border-r border-zinc-800 bg-zinc-900">
       {/* Header */}
       <div className="border-b border-zinc-800 px-4 py-4">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-100">WhatsApp Inbox</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-zinc-100">WhatsApp Inbox</h2>
+          <button
+            onClick={() => refreshConversations(false)}
+            disabled={refreshing}
+            className="flex items-center justify-center h-6 w-6 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-40"
+            title="Atualizar conversas"
+          >
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+        </div>
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input

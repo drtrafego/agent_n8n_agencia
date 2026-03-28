@@ -1,0 +1,544 @@
+{
+  "name": "reengagement agent_n8n_agencia",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 13 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Trigger 10h BRT",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1400,
+        300
+      ],
+      "id": "7c27df87-8af3-4db9-b26c-257454dbcf6c"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reengagement-run-x7k9",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Webhook Teste",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1400,
+        60
+      ],
+      "id": "71c3a349-dd63-454b-b628-b1d0f8c6f731",
+      "webhookId": "72b71c47-207c-4349-a4ab-0a98efb9b9c0"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.id AS crm_contact_id, c.telefone AS phone, c.nome, c.stage, c.observacoes_sdr, COALESCE(c.followup_count, 0) AS followup_count, wc.id AS conversation_id, wc.last_message, wc.last_message_at FROM contacts c JOIN wa_contacts wac ON wac.wa_id = c.telefone JOIN wa_conversations wc ON wc.contact_id = wac.id WHERE wc.bot_active = true AND wc.status = 'open' AND c.stage NOT IN ('agendado', 'agendou', 'fechou', 'perdido') AND COALESCE(c.followup_count, 0) < 3 AND c.last_bot_msg_at IS NOT NULL AND c.last_bot_msg_at < NOW() - INTERVAL '12 hours' AND c.last_bot_msg_at > NOW() - INTERVAL '72 hours' AND (c.last_lead_msg_at IS NULL OR c.last_lead_msg_at < c.last_bot_msg_at) ORDER BY c.last_bot_msg_at ASC LIMIT 20;",
+        "options": {}
+      },
+      "name": "Buscar Leads Elegiveis",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -1060,
+        180
+      ],
+      "id": "5d492b91-1bec-4de0-b331-b402e89410b7",
+      "credentials": {
+        "postgres": {
+          "id": "qjAlzv5GyfH3869u",
+          "name": "Postgres agent-n8n-agencia"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "408f3c77-bb75-4ee6-8fe0-499c5bf7de70",
+              "leftValue": "={{ $json.phone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "Tem Leads?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        -780,
+        180
+      ],
+      "id": "b14c1cf2-31a3-476f-8837-f980a01a3c4c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "261a94b4-6b03-4a43-ace2-e2a3ae38ed9f",
+              "name": "phone",
+              "value": "={{ $json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "b47fdfd2-8e6b-4f4d-aa06-52b1cb62a7e1",
+              "name": "nome",
+              "value": "={{ $json.nome }}",
+              "type": "string"
+            },
+            {
+              "id": "5971d231-3cb9-431a-be78-fbfbd141dbd2",
+              "name": "stage",
+              "value": "={{ $json.stage }}",
+              "type": "string"
+            },
+            {
+              "id": "a6542b8f-8bec-41b5-a230-04fefdae7e56",
+              "name": "observacoes",
+              "value": "={{ $json.observacoes_sdr }}",
+              "type": "string"
+            },
+            {
+              "id": "4e72c9f1-3575-42ce-995a-1c9b3dbc60fd",
+              "name": "last_message",
+              "value": "={{ $json.last_message }}",
+              "type": "string"
+            },
+            {
+              "id": "ad79ba0c-af3f-4280-894a-2c1237ffd4a5",
+              "name": "crm_contact_id",
+              "value": "={{ $json.crm_contact_id }}",
+              "type": "number"
+            },
+            {
+              "id": "5bb2a679-dbc2-4c8e-8b0e-423d7f0ca6ef",
+              "name": "followup_count",
+              "value": "={{ $json.followup_count }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Preparar Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -500,
+        180
+      ],
+      "id": "46c67730-7e3e-4013-9d19-bb8160869b24"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputIndex": 0,
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.stage }}",
+                    "rightValue": "novo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputIndex": 1,
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.stage }}",
+                    "rightValue": "qualificando",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ],
+          "fallbackOutput": 2
+        },
+        "options": {}
+      },
+      "name": "Qual Etapa?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -200,
+        180
+      ],
+      "id": "72f032a3-4c4d-4838-8618-b13a6077e4dc"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dbc2a64c-0882-4a33-8d27-624e152b5cd8",
+              "name": "body",
+              "value": "={{ [\"Oi \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Vi que voce se interessou pelo Agente de IA. Posso te explicar rapidinho como funciona?\", \"Oi \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Ainda quer saber como um Agente de IA pode ajudar seu negocio? Estou aqui!\", \"E ai \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Tudo bem? Ficou com alguma duvida sobre o Agente de IA?\"][Math.floor(Math.random() * 3)] }}",
+              "type": "string"
+            },
+            {
+              "id": "0bb1ef46-de67-4557-81d4-93dc72af152f",
+              "name": "phone",
+              "value": "={{ $json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "1c9914da-2439-4ff4-a0c8-4e97d6e6b89e",
+              "name": "crm_contact_id",
+              "value": "={{ $json.crm_contact_id }}",
+              "type": "number"
+            },
+            {
+              "id": "8d3a0bd7-a28f-4146-8886-5678706f4f1c",
+              "name": "followup_count",
+              "value": "={{ $json.followup_count }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Msg Novo Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        120,
+        -20
+      ],
+      "id": "cfe0ee2d-a08c-4f86-b61c-f68c5080f995"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a88b89a1-080c-4eca-8ce5-eb60da11f0af",
+              "name": "body",
+              "value": "={{ [\"Oi \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Estivemos conversando sobre o Agente de IA. Quer agendar uma demonstracao rapida?\", \"Oi \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Que tal agendarmos 15 minutinhos pra eu te mostrar o Agente ao vivo?\", \"E ai \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Ainda pensando sobre o Agente de IA? Posso te mandar um exemplo pratico!\"][Math.floor(Math.random() * 3)] }}",
+              "type": "string"
+            },
+            {
+              "id": "61d36e0b-8a31-4141-b160-c07e9b5571d2",
+              "name": "phone",
+              "value": "={{ $json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "f0926076-945e-4c54-adcd-50b854c42dfd",
+              "name": "crm_contact_id",
+              "value": "={{ $json.crm_contact_id }}",
+              "type": "number"
+            },
+            {
+              "id": "a977044f-46e0-4af1-88bd-9febbf375984",
+              "name": "followup_count",
+              "value": "={{ $json.followup_count }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Msg Qualificando",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        120,
+        200
+      ],
+      "id": "80c7531e-c2c1-410d-a7a0-978b9c60b06e"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b07607e5-e14c-42b4-9a30-371129279df4",
+              "name": "body",
+              "value": "={{ [\"Oi \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Ficou alguma duvida sobre nosso Agente de IA? Estou aqui!\", \"Oi \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Passando pra ver se posso te ajudar com mais info sobre o Agente de IA.\", \"E ai \" + ($json.nome || \"\").split(\"|\")[0].trim() + \"! Se quiser, posso te mostrar como o Agente funciona na pratica!\"][Math.floor(Math.random() * 3)] }}",
+              "type": "string"
+            },
+            {
+              "id": "1aaca3a7-9565-4dd8-9521-6f9758ea5d31",
+              "name": "phone",
+              "value": "={{ $json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "0012643e-0688-43b8-9020-e93d7bc9bdae",
+              "name": "crm_contact_id",
+              "value": "={{ $json.crm_contact_id }}",
+              "type": "number"
+            },
+            {
+              "id": "8d53d3dc-196a-4d85-b2f8-1d711d3b37a4",
+              "name": "followup_count",
+              "value": "={{ $json.followup_count }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Msg Outros",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        120,
+        420
+      ],
+      "id": "156d8d94-05bc-42a5-bfac-b5868b549bb5"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://agente.casaldotrafego.com/api/whatsapp/bot-send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({phone: $json.phone, body: $json.body}) }}",
+        "options": {}
+      },
+      "name": "Enviar Reengagement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        200
+      ],
+      "id": "cf11676f-e6a3-4fc1-830e-3d4c2370cc00"
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "name": "Esperar 3s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        200
+      ],
+      "id": "5f1d3bf2-33b7-4bb4-a398-0afdbc184b56"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE contacts SET followup_count = COALESCE(followup_count, 0) + 1, last_bot_msg_at = NOW(), observacoes_sdr = COALESCE(observacoes_sdr, '') || chr(10) || 'Followup #' || (COALESCE(followup_count, 0) + 1)::text || ' enviado em ' || TO_CHAR(NOW() AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') || '.' WHERE id = {{ $json.crm_contact_id }};",
+        "options": {}
+      },
+      "name": "Marcar Followup",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        960,
+        200
+      ],
+      "id": "935c034f-2bd5-4b14-b3f7-3d6890de977e",
+      "credentials": {
+        "postgres": {
+          "id": "qjAlzv5GyfH3869u",
+          "name": "Postgres agent-n8n-agencia"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "name": "Concluido",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        200
+      ],
+      "id": "5ddd0ec5-8d5d-4b6d-9cf7-628046db98a1"
+    }
+  ],
+  "connections": {
+    "Trigger 10h BRT": {
+      "main": [
+        [
+          {
+            "node": "Buscar Leads Elegiveis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Teste": {
+      "main": [
+        [
+          {
+            "node": "Buscar Leads Elegiveis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Leads Elegiveis": {
+      "main": [
+        [
+          {
+            "node": "Tem Leads?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Leads?": {
+      "main": [
+        [
+          {
+            "node": "Preparar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Dados": {
+      "main": [
+        [
+          {
+            "node": "Qual Etapa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qual Etapa?": {
+      "main": [
+        [
+          {
+            "node": "Msg Novo Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg Qualificando",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg Outros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg Novo Lead": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reengagement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg Qualificando": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reengagement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg Outros": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reengagement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Reengagement": {
+      "main": [
+        [
+          {
+            "node": "Esperar 3s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar 3s": {
+      "main": [
+        [
+          {
+            "node": "Marcar Followup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Followup": {
+      "main": [
+        [
+          {
+            "node": "Concluido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "pinData": {}
+}
