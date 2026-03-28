@@ -236,7 +236,8 @@ export default function TokensPage() {
               <YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: '#71717a' }} tickLine={false} axisLine={false} width={48} />
               <Tooltip
                 contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
-                formatter={(v: number) => [fmt(v), 'Tokens']}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={((v: unknown) => [fmt(typeof v === 'number' ? v : 0), 'Tokens']) as any}
               />
               <Bar dataKey="totalTokens" name="Tokens" radius={[4, 4, 0, 0]}
                 fill="#6366f1"
