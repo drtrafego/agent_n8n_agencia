@@ -94,7 +94,7 @@ export async function POST() {
         const existing = await waDb.execute(
           sql`SELECT id FROM wa_token_usage_logs WHERE execution_id = ${exec.id} LIMIT 1`
         );
-        if (existing.rows.length > 0) { skipped++; continue; }
+        if ((existing as unknown as unknown[]).length > 0) { skipped++; continue; }
 
         const tokens = extractTokens(exec);
         if (tokens.totalTokens === 0) { skipped++; continue; }

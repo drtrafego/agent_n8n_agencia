@@ -112,27 +112,35 @@ export async function GET(req: NextRequest) {
       LIMIT 20
     `);
 
-    const t = totals.rows[0];
-    const p = prevTotals.rows[0];
-    const td = today.rows[0];
+    // Drizzle execute() returns an array directly (RowList extends T[])
+    const tRows = totals as unknown as { total_tokens: string; prompt_tokens: string; completion_tokens: string; estimated_cost: string; executions: string }[];
+    const pRows = prevTotals as unknown as { total_tokens: string; estimated_cost: string; executions: string }[];
+    const tdRows = today as unknown as { total_tokens: string; estimated_cost: string; executions: string }[];
+    const bwRows = byWorkflow as unknown as { workflow_name: string; total_tokens: string; estimated_cost: string; executions: string }[];
+    const dRows = daily as unknown as { day: string; total_tokens: string; prompt_tokens: string; completion_tokens: string; estimated_cost: string; executions: string }[];
+    const rRows = recent as unknown as { execution_id: string; workflow_name: string; total_tokens: string; prompt_tokens: string; completion_tokens: string; estimated_cost_usd: string; model: string; executed_at: string }[];
+
+    const t = tRows[0];
+    const p = pRows[0];
+    const td = tdRows[0];
 
     const trend = (curr: number, prev: number) => {
       if (!prev) return null;
       return Math.round(((curr - prev) / prev) * 100);
     };
 
-    const currTokens = Number(t.total_tokens);
-    const prevTokens = Number(p.total_tokens);
-    const currCost = Number(t.estimated_cost);
-    const prevCost = Number(p.estimated_cost);
-    const currExec = Number(t.executions);
-    const prevExec = Number(p.executions);
+    const currTokens = Number(t?.total_tokens ?? 0);
+    const prevTokens = Number(p?.total_tokens ?? 0);
+    const currCost = Number(t?.estimated_cost ?? 0);
+    const prevCost = Number(p?.estimated_cost ?? 0);
+    const currExec = Number(t?.executions ?? 0);
+    const prevExec = Number(p?.executions ?? 0);
 
     return NextResponse.json({
       summary: {
         totalTokens: currTokens,
-        promptTokens: Number(t.prompt_tokens),
-        completionTokens: Number(t.completion_tokens),
+        promptTokens: Number(t?.prompt_tokens ?? 0),
+        completionTokens: Number(t?.completion_tokens ?? 0),
         estimatedCostUsd: currCost,
         executions: currExec,
         avgTokensPerExecution: currExec > 0 ? Math.round(currTokens / currExec) : 0,
@@ -143,17 +151,17 @@ export async function GET(req: NextRequest) {
         },
       },
       today: {
-        totalTokens: Number(td.total_tokens),
-        estimatedCostUsd: Number(td.estimated_cost),
-        executions: Number(td.executions),
+        totalTokens: Number(td?.total_tokens ?? 0),
+        estimatedCostUsd: Number(td?.estimated_cost ?? 0),
+        executions: Number(td?.executions ?? 0),
       },
-      byWorkflow: byWorkflow.rows.map((r) => ({
+      byWorkflow: bwRows.map((r) => ({
         workflowName: r.workflow_name,
         totalTokens: Number(r.total_tokens),
         estimatedCostUsd: Number(r.estimated_cost),
         executions: Number(r.executions),
       })),
-      daily: daily.rows.map((r) => ({
+      daily: dRows.map((r) => ({
         day: r.day,
         totalTokens: Number(r.total_tokens),
         promptTokens: Number(r.prompt_tokens),
@@ -161,7 +169,7 @@ export async function GET(req: NextRequest) {
         estimatedCostUsd: Number(r.estimated_cost),
         executions: Number(r.executions),
       })),
-      recent: recent.rows.map((r) => ({
+      recent: rRows.map((r) => ({
         executionId: r.execution_id,
         workflowName: r.workflow_name,
         totalTokens: Number(r.total_tokens),
