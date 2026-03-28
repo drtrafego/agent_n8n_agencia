@@ -214,7 +214,8 @@ export default function TokensPage() {
               <Tooltip
                 contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: '#e4e4e7', marginBottom: 4 }}
-                formatter={(v: number | string | undefined, name: string | number) => [fmt(typeof v === 'number' ? v : 0), name === 'promptTokens' ? 'Input' : name === 'completionTokens' ? 'Output' : 'Total']}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={((v: unknown, name: unknown) => [fmt(typeof v === 'number' ? v : 0), name === 'promptTokens' ? 'Input' : name === 'completionTokens' ? 'Output' : 'Total']) as any}
               />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
               <Line type="monotone" dataKey="promptTokens" name="Input" stroke="#6366f1" strokeWidth={2} dot={false} />
