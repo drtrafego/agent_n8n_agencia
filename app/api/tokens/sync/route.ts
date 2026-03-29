@@ -5,122 +5,136 @@ import { sql } from 'drizzle-orm';
 
 const N8N_URL = process.env.N8N_API_URL || 'https://n8n.casaldotrafego.com';
 const N8N_KEY = process.env.N8N_API_KEY || '';
-
-// Workflows a monitorar
-const WORKFLOWS = [
-  { id: 'JmiydfZHpeU8tnic', name: 'agent_n8n_agencia' },
-  { id: 'aBMaCWPodLaS8I6L', name: 'reengagement_agent' },
-];
-
-// Nós LLM do workflow principal
-const LLM_NODES = ['OpenAI Chat Model1', 'OpenAI Chat Model2', 'OpenAI Chat Model3'];
+const WORKFLOW_PATTERN = 'agent_n8n_agencia'; // auto-descobre qualquer workflow com esse nome
 
 // Preços Gemini 2.5 Flash (USD por token)
-const COST_INPUT_PER_TOKEN = 0.15 / 1_000_000;
-const COST_OUTPUT_PER_TOKEN = 0.60 / 1_000_000;
+const COST_INPUT  = 0.15 / 1_000_000;
+const COST_OUTPUT = 0.60 / 1_000_000;
+
+const headers = { 'X-N8N-API-KEY': N8N_KEY };
+
+// ── Tipos ────────────────────────────────────────────────────────────────────
+
+type N8nWorkflow = { id: string; name: string; active: boolean };
+
+type LLMItem = { json?: { tokenUsage?: { promptTokens?: number; completionTokens?: number } } };
+type NodeRun  = { data?: { ai_languageModel?: LLMItem[][] } };
+type RunData  = Record<string, NodeRun[]>;
 
 type N8nExecution = {
-  id: string;
-  workflowId: string;
+  id: number;
   startedAt: string;
   status: string;
-  data?: {
-    resultData?: {
-      runData?: Record<string, Array<{
-        data?: {
-          ai_languageModel?: Array<Array<{
-            json?: {
-              tokenUsage?: {
-                promptTokens?: number;
-                completionTokens?: number;
-                totalTokens?: number;
-              };
-            };
-          }>>;
-        };
-      }>>;
-    };
-  };
+  data?: { resultData?: { runData?: RunData } };
 };
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+async function n8nGet(path: string) {
+  const res = await fetch(`${N8N_URL}${path}`, { headers, cache: 'no-store' });
+  if (!res.ok) throw new Error(`n8n ${path} → ${res.status}`);
+  return res.json();
+}
+
+/** Busca todos os workflows que contêm WORKFLOW_PATTERN no nome */
+async function discoverWorkflows(): Promise<N8nWorkflow[]> {
+  const json = await n8nGet('/api/v1/workflows?limit=100');
+  return (json.data as N8nWorkflow[]).filter((w) =>
+    w.name.toLowerCase().includes(WORKFLOW_PATTERN)
+  );
+}
+
+/** Busca TODAS as execuções bem-sucedidas de um workflow (com paginação) */
+async function fetchAllExecutions(workflowId: string): Promise<N8nExecution[]> {
+  const all: N8nExecution[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const qs = new URLSearchParams({
+      workflowId,
+      status: 'success',
+      includeData: 'true',
+      limit: '100',
+      ...(cursor ? { cursor } : {}),
+    });
+    const json = await n8nGet(`/api/v1/executions?${qs}`);
+    all.push(...(json.data as N8nExecution[]));
+    cursor = json.nextCursor ?? null;
+  } while (cursor);
+
+  return all;
+}
+
+/** Extrai tokens de QUALQUER nó LLM da execução (auto-detecção) */
 function extractTokens(execution: N8nExecution) {
-  const runData = execution.data?.resultData?.runData || {};
+  const runData: RunData = execution.data?.resultData?.runData ?? {};
   let promptTokens = 0;
   let completionTokens = 0;
-  let model = 'gemini-2.5-flash';
 
-  for (const nodeName of LLM_NODES) {
-    const nodeRuns = runData[nodeName] || [];
-    for (const run of nodeRuns) {
-      const items = run.data?.ai_languageModel?.[0] || [];
+  for (const runs of Object.values(runData)) {
+    for (const run of runs) {
+      const items = run.data?.ai_languageModel?.[0] ?? [];
       for (const item of items) {
-        const usage = item.json?.tokenUsage;
-        if (usage) {
-          promptTokens += usage.promptTokens || 0;
-          completionTokens += usage.completionTokens || 0;
-        }
+        promptTokens    += item.json?.tokenUsage?.promptTokens    ?? 0;
+        completionTokens += item.json?.tokenUsage?.completionTokens ?? 0;
       }
     }
   }
 
-  const totalTokens = promptTokens + completionTokens;
-  const estimatedCostUsd =
-    promptTokens * COST_INPUT_PER_TOKEN + completionTokens * COST_OUTPUT_PER_TOKEN;
-
-  return { promptTokens, completionTokens, totalTokens, model, estimatedCostUsd };
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens: promptTokens + completionTokens,
+    estimatedCostUsd: promptTokens * COST_INPUT + completionTokens * COST_OUTPUT,
+  };
 }
 
-async function fetchExecutions(workflowId: string): Promise<N8nExecution[]> {
-  const url = `${N8N_URL}/api/v1/executions?workflowId=${workflowId}&status=success&includeData=true&limit=100`;
-  const res = await fetch(url, {
-    headers: { 'X-N8N-API-KEY': N8N_KEY },
-    next: { revalidate: 0 },
-  });
-  if (!res.ok) return [];
-  const json = await res.json();
-  return json.data || [];
-}
+// ── Handler ──────────────────────────────────────────────────────────────────
 
 export async function POST() {
   try {
+    const workflows = await discoverWorkflows();
     let inserted = 0;
-    let skipped = 0;
+    let skipped  = 0;
 
-    for (const workflow of WORKFLOWS) {
-      const executions = await fetchExecutions(workflow.id);
+    for (const wf of workflows) {
+      const executions = await fetchAllExecutions(wf.id);
 
       for (const exec of executions) {
-        // Pula se já foi sincronizado
-        const existing = await waDb.execute(
-          sql`SELECT id FROM wa_token_usage_logs WHERE execution_id = ${exec.id} LIMIT 1`
-        );
-        if ((existing as unknown as unknown[]).length > 0) { skipped++; continue; }
-
         const tokens = extractTokens(exec);
         if (tokens.totalTokens === 0) { skipped++; continue; }
 
-        await waDb.insert(waTokenUsageLogs).values({
-          executionId: exec.id,
-          workflowId: workflow.id,
-          workflowName: workflow.name,
-          promptTokens: tokens.promptTokens,
-          completionTokens: tokens.completionTokens,
-          totalTokens: tokens.totalTokens,
-          model: tokens.model,
-          estimatedCostUsd: tokens.estimatedCostUsd,
-          executedAt: new Date(exec.startedAt),
-        });
-        inserted++;
+        // ON CONFLICT DO NOTHING evita duplicatas sem pre-query
+        const result = await waDb
+          .insert(waTokenUsageLogs)
+          .values({
+            executionId:     String(exec.id),
+            workflowId:      wf.id,
+            workflowName:    wf.name,
+            promptTokens:    tokens.promptTokens,
+            completionTokens: tokens.completionTokens,
+            totalTokens:     tokens.totalTokens,
+            model:           'gemini-2.5-flash',
+            estimatedCostUsd: tokens.estimatedCostUsd,
+            executedAt:      new Date(exec.startedAt),
+          })
+          .onConflictDoNothing()
+          .returning({ id: waTokenUsageLogs.id });
+
+        result.length > 0 ? inserted++ : skipped++;
       }
     }
 
-    return NextResponse.json({ ok: true, inserted, skipped });
+    return NextResponse.json({
+      ok: true,
+      workflows: workflows.map((w) => w.name),
+      inserted,
+      skipped,
+    });
   } catch (err) {
     console.error('Erro em /api/tokens/sync:', err);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
 
-export async function GET() {
-  return POST();
-}
+export const GET = POST;
