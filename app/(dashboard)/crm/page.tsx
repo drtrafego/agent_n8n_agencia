@@ -58,6 +58,7 @@ const STAGES = [
   { key: 'qualificando', label: 'Qualificando', color: 'bg-blue-600', badgeBg: 'bg-blue-900/50', textColor: 'text-blue-300', borderColor: 'border-blue-800/50' },
   { key: 'interesse', label: 'Interesse', color: 'bg-yellow-600', badgeBg: 'bg-yellow-900/50', textColor: 'text-yellow-300', borderColor: 'border-yellow-800/50' },
   { key: 'agendado', label: 'Agendado', color: 'bg-green-600', badgeBg: 'bg-green-900/50', textColor: 'text-green-300', borderColor: 'border-green-800/50' },
+  { key: 'realizada', label: 'Realizada', color: 'bg-emerald-600', badgeBg: 'bg-emerald-900/50', textColor: 'text-emerald-300', borderColor: 'border-emerald-800/50' },
   { key: 'convertido', label: 'Convertido', color: 'bg-purple-600', badgeBg: 'bg-purple-900/50', textColor: 'text-purple-300', borderColor: 'border-purple-800/50' },
   { key: 'sem_interesse', label: 'Sem Interesse', color: 'bg-red-600', badgeBg: 'bg-red-900/50', textColor: 'text-red-300', borderColor: 'border-red-800/50' },
 ] as const;

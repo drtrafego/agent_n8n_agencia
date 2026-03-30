@@ -7,6 +7,7 @@ const VALID_STAGES = [
   'qualificando',
   'interesse',
   'agendado',
+  'realizada',
   'convertido',
   'sem_interesse',
 ] as const;
@@ -14,6 +15,7 @@ const VALID_STAGES = [
 function classifyStage(obs: string | null): string | null {
   if (!obs) return null;
   const o = obs.toLowerCase();
+  if (o.includes('realizada') || o.includes('reuniao realizada') || o.includes('reunião feita') || o.includes('call realizada')) return 'realizada';
   if (o.includes('agendad') || o.includes('convite disparado') || o.includes('call agendada')) return 'agendado';
   if (o.includes('sem interesse')) return 'sem_interesse';
   if (o.includes('email') || o.includes('qualificand')) return 'interesse';
@@ -47,6 +49,7 @@ export async function GET() {
     await db.execute(sql`
       UPDATE contacts SET
         stage = CASE
+          WHEN observacoes_sdr ILIKE '%realizada%' OR observacoes_sdr ILIKE '%reuniao realizada%' OR observacoes_sdr ILIKE '%reunião feita%' OR observacoes_sdr ILIKE '%call realizada%' THEN 'realizada'
           WHEN observacoes_sdr ILIKE '%Status: agendado%' OR observacoes_sdr ILIKE '%convite disparado%' OR observacoes_sdr ILIKE '%call agendada%' THEN 'agendado'
           WHEN observacoes_sdr ILIKE '%Status: sem interesse%' OR observacoes_sdr ILIKE '%sem interesse%' THEN 'sem_interesse'
           WHEN observacoes_sdr ILIKE '%Status: interesse%' OR observacoes_sdr ILIKE '%pediu para agendar%' OR observacoes_sdr ILIKE '%escolheu hor%' THEN 'interesse'
