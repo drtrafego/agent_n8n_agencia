@@ -73,7 +73,7 @@ SELECT crm_contact_id, phone, followup_count,
     WHEN followup_count = 3 THEN
       'Oi ' || TRIM(nome) || E'! Ainda tenho uns hor\u00e1rios essa semana pra te mostrar o Agente funcionando ao vivo no WhatsApp. S\u00e3o 15 minutos e voc\u00ea j\u00e1 sai sabendo exatamente como aplicar no seu neg\u00f3cio. Posso reservar um pra voc\u00ea?'
     WHEN followup_count = 4 THEN
-      'Oi ' || TRIM(nome) || E'! \u00daltima mensagem por aqui. Se no futuro precisar automatizar o atendimento do seu neg\u00f3cio, \u00e9 s\u00f3 me chamar. Desejo muito sucesso!'
+      'Oi ' || TRIM(nome) || E'! \u00daltima mensagem por aqui. Se no futuro quiser implementar um Agente de IA no seu neg\u00f3cio, \u00e9 s\u00f3 me chamar. Desejo muito sucesso!'
     WHEN followup_count = 99 THEN
       'Oi ' || TRIM(nome) || E'! Tudo bem? Vi que t\u00ednhamos uma reuni\u00e3o agendada mas n\u00e3o conseguimos nos falar. Sem problemas! O Agente 24 Horas continua dispon\u00edvel pra voc\u00ea. Quer reagendar pra essa semana?'
     ELSE
