@@ -40,6 +40,9 @@ WITH eligible AS (
         AND c.last_bot_msg_at > NOW() - INTERVAL '48 hours')
       OR (COALESCE(c.followup_count,0) = 3
         AND c.last_bot_msg_at < NOW() - INTERVAL '48 hours'
+        AND c.last_bot_msg_at > NOW() - INTERVAL '60 hours')
+      OR (COALESCE(c.followup_count,0) = 4
+        AND c.last_bot_msg_at < NOW() - INTERVAL '60 hours'
         AND c.last_bot_msg_at > NOW() - INTERVAL '72 hours')
     )
   LIMIT 20
@@ -68,7 +71,9 @@ SELECT crm_contact_id, phone, followup_count,
     WHEN followup_count = 2 THEN
       'Oi ' || TRIM(nome) || '! Ultima mensagem, prometo. Essa semana ainda tenho horarios pra uma sessao gratuita de implementacao. Quer garantir o seu?'
     WHEN followup_count = 3 THEN
-      'Oi ' || TRIM(nome) || '! Vi que ficou dificil a gente conversar. Sem problemas! Se precisar de algo no futuro, e so mandar mensagem aqui. Fico a disposicao!'
+      'Oi ' || TRIM(nome) || '! Sei que o dia a dia e corrido. Tenho um conteudo rapido que mostra como nossos clientes estao economizando tempo com o Agente de IA. Posso te enviar?'
+    WHEN followup_count = 4 THEN
+      'Oi ' || TRIM(nome) || '! Ultima mensagem, prometo. Se precisar de algo no futuro, e so mandar mensagem aqui. Fico a disposicao! Desejo sucesso no seu negocio.'
     WHEN followup_count = 99 THEN
       'Oi ' || TRIM(nome) || '! Tudo bem? Vi que tinhamos uma reuniao agendada mas nao conseguimos nos falar. Sem problemas! So queria lembrar que o Agente de IA pode te ajudar a escalar o atendimento do seu negocio, funciona 24h. Quer reagendar pra essa semana?'
     ELSE
@@ -87,7 +92,7 @@ SQL_UPDATE = (
     "ELSE COALESCE(followup_count, 0) + 1 END, "
     "last_bot_msg_at = NOW(), "
     "stage = CASE WHEN {{ $('Buscar Leads').item.json.followup_count }} = 99 THEN stage "
-    "WHEN COALESCE(followup_count, 0) + 1 >= 4 THEN 'sem_interesse' "
+    "WHEN COALESCE(followup_count, 0) + 1 >= 5 THEN 'sem_interesse' "
     "ELSE stage END "
     "WHERE id = {{ $('Buscar Leads').item.json.crm_contact_id }};"
 )
