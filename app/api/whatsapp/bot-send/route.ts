@@ -9,9 +9,10 @@ import { sendTextMessage } from '@/lib/meta/client';
 // Envia via Meta API E salva no banco para exibir no frontend
 export async function POST(req: NextRequest) {
   try {
-    const { phone, body: msgBody } = await req.json() as {
+    const { phone, body: msgBody, phoneNumberId } = await req.json() as {
       phone: string;
       body: string;
+      phoneNumberId?: string;
     };
 
     if (!phone || !msgBody) {
@@ -43,8 +44,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Conversa não encontrada' }, { status: 404 });
     }
 
-    // Enviar via Meta API
-    const metaResult = await sendTextMessage(waId, msgBody);
+    // Enviar via Meta API (phoneNumberId define de qual número enviar)
+    const metaResult = await sendTextMessage(waId, msgBody, phoneNumberId);
     if (!metaResult.success) {
       return NextResponse.json({ error: metaResult.error || 'Erro ao enviar' }, { status: 500 });
     }

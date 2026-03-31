@@ -82,7 +82,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         )}
 
         {message.type === 'audio' && mediaUrl && (
-          <audio controls className="mb-2 max-w-full" src={mediaUrl} />
+          <audio
+            controls
+            className="mb-2 max-w-full"
+            src={mediaUrl}
+            preload="metadata"
+          >
+            <source src={mediaUrl} type="audio/ogg; codecs=opus" />
+          </audio>
         )}
 
         {message.type === 'audio' && !mediaUrl && (
