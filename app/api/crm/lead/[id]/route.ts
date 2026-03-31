@@ -15,7 +15,8 @@ export async function GET(
       id: number; nome: string | null; telefone: string | null; email: string | null;
       nicho: string | null; observacoes_sdr: string | null; stage: string;
       source: string | null; created_at: string; updated_at: string;
-    }>(sql`SELECT id, nome, telefone, email, nicho, observacoes_sdr, stage, source, created_at, updated_at FROM contacts WHERE id = ${contactId} LIMIT 1`);
+      followup_count: number; last_bot_msg_at: string | null; last_lead_msg_at: string | null;
+    }>(sql`SELECT id, nome, telefone, email, nicho, observacoes_sdr, stage, source, created_at, updated_at, COALESCE(followup_count, 0)::int as followup_count, last_bot_msg_at, last_lead_msg_at FROM contacts WHERE id = ${contactId} LIMIT 1`);
 
     if (!contact.length) return NextResponse.json({ error: 'Contato nao encontrado' }, { status: 404 });
 
