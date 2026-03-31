@@ -18,9 +18,10 @@ BASE = "https://n8n.casaldotrafego.com"
 SQL_LEADS = """
 WITH eligible AS (
   SELECT c.id AS crm_contact_id, c.telefone AS phone,
-    SPLIT_PART(COALESCE(c.nome,''), '|', 1) AS nome,
+    SPLIT_PART(SPLIT_PART(COALESCE(c.nome,''), '|', 1), ' ', 1) AS nome,
     c.stage,
-    COALESCE(c.followup_count, 0) AS followup_count
+    COALESCE(c.followup_count, 0) AS followup_count,
+    COALESCE(c.observacoes_sdr, '') AS obs
   FROM contacts c
   JOIN wa_contacts wac ON wac.wa_id = c.telefone
   JOIN wa_conversations wc ON wc.contact_id = wac.id
@@ -51,7 +52,8 @@ reagend AS (
   SELECT c.id AS crm_contact_id, c.telefone AS phone,
     SPLIT_PART(SPLIT_PART(COALESCE(c.nome,''), '|', 1), ' ', 1) AS nome,
     c.stage,
-    99 AS followup_count
+    99 AS followup_count,
+    COALESCE(c.observacoes_sdr, '') AS obs
   FROM contacts c
   JOIN wa_contacts wac ON wac.wa_id = c.telefone
   JOIN wa_conversations wc ON wc.contact_id = wac.id
@@ -64,10 +66,16 @@ reagend AS (
 )
 SELECT crm_contact_id, phone, followup_count,
   CASE
+    WHEN followup_count = 0 AND LENGTH(obs) >= 20 THEN
+      'Oi ' || TRIM(nome) || E'! Vi que estávamos conversando. Ficou alguma d\u00favida que posso te ajudar a esclarecer sobre o Agente de IA?'
     WHEN followup_count = 0 THEN
       'Oi ' || TRIM(nome) || E'! Para eu te mostrar de forma pr\u00e1tica como funciona no seu caso, me conta: seu neg\u00f3cio \u00e9 mais voltado para sa\u00fade, servi\u00e7os, im\u00f3veis, varejo ou outro segmento?'
+    WHEN followup_count = 1 AND LENGTH(obs) >= 20 THEN
+      'Oi ' || TRIM(nome) || E'! Vi que voc\u00ea j\u00e1 me contou um pouco sobre o seu neg\u00f3cio. Faz sentido reservarmos 15 minutinhos essa semana para te mostrar exatamente como o Agente de IA funcionaria no seu caso?'
     WHEN followup_count = 1 THEN
       'Oi ' || TRIM(nome) || E'! Vi que voc\u00ea se interessou no Agente de IA. A gente treina o agente com o seu neg\u00f3cio e entrega tudo pronto no seu WhatsApp. Zero trabalho do seu lado. Quer ver um caso do seu segmento?'
+    WHEN followup_count = 2 AND LENGTH(obs) >= 20 THEN
+      'Oi ' || TRIM(nome) || E'! Ainda tenho hor\u00e1rios essa semana para te mostrar o Agente funcionando ao vivo. S\u00e3o 15 minutos e voc\u00ea j\u00e1 sai com uma vis\u00e3o clara de como aplicar no seu neg\u00f3cio. Posso reservar um pra voc\u00ea?'
     WHEN followup_count = 2 THEN
       'Oi ' || TRIM(nome) || E'! O Agente de IA \u00e9 como ter um vendedor que nunca dorme, nunca falta e custa menos que um funcion\u00e1rio. Nossos clientes est\u00e3o qualificando leads e agendando reuni\u00f5es no piloto autom\u00e1tico. Faz sentido conversarmos?'
     WHEN followup_count = 3 THEN
