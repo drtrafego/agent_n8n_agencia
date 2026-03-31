@@ -115,7 +115,9 @@ workflow = {
             "parameters": {"operation": "executeQuery", "query": SQL_LEADS, "options": {}},
             "type": "n8n-nodes-base.postgres", "typeVersion": 2.5,
             "position": [120, 180], "id": "re-q", "name": "Buscar Leads",
-            "credentials": {"postgres": PG}
+            "credentials": {"postgres": PG},
+            "alwaysOutputData": False,
+            "onError": "continueRegularOutput"
         },
         {
             "parameters": {
@@ -127,7 +129,8 @@ workflow = {
                 "options": {}
             },
             "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2,
-            "position": [440, 180], "id": "re-send", "name": "Enviar Msg"
+            "position": [440, 180], "id": "re-send", "name": "Enviar Msg",
+            "onError": "continueRegularOutput"
         },
         {
             "parameters": {"amount": 3, "unit": "seconds"},
