@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
           const buffer = await downloadMedia(mediaId);
           if (buffer) {
             const mime = getMimeType(msg) || 'application/octet-stream';
-            const ext = mime.split('/')[1] || 'bin';
+            const ext = (mime.split('/')[1] || 'bin').split(';')[0].trim();
             const filename = getFilename(msg) || `${mediaId}.${ext}`;
             const blob = await put(`whatsapp/${mediaId}/${filename}`, buffer, {
               access: 'public',
@@ -231,32 +231,51 @@ export async function POST(req: NextRequest) {
       });
 
       // Se bot ativo → encaminhar para n8n no formato que o workflow espera
-      if (conv.botActive && process.env.N8N_WEBHOOK_URL) {
-        const n8nPayload = JSON.stringify({
-          object: 'whatsapp_business_account',
-          entry: [{
-            changes: [{
-              value: {
-                messaging_product: 'whatsapp',
-                messages: [msg],
-                contacts: parsed.contacts,
-                metadata: parsed.value.metadata,
-              },
-            }],
-          }],
-        });
+      // Roteamento por phone_number_id: cada número pode ter seu próprio webhook n8n
+      if (conv.botActive) {
+        const incomingPhoneNumberId = parsed.value.metadata?.phone_number_id;
+        let targetWebhookUrl: string | undefined;
 
-        after(async () => {
-          try {
-            await fetch(process.env.N8N_WEBHOOK_URL!, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: n8nPayload,
-            });
-          } catch (err) {
-            console.error('Erro ao notificar n8n:', err);
-          }
-        });
+        if (
+          process.env.META_PHONE_NUMBER_ID_AD &&
+          incomingPhoneNumberId === process.env.META_PHONE_NUMBER_ID_AD &&
+          process.env.N8N_WEBHOOK_URL_AD
+        ) {
+          // Número do advogado → agent_adv_trial
+          targetWebhookUrl = process.env.N8N_WEBHOOK_URL_AD;
+        } else if (process.env.N8N_WEBHOOK_URL) {
+          // Número padrão → workflow existente (sem mudança)
+          targetWebhookUrl = process.env.N8N_WEBHOOK_URL;
+        }
+
+        if (targetWebhookUrl) {
+          const n8nPayload = JSON.stringify({
+            object: 'whatsapp_business_account',
+            entry: [{
+              changes: [{
+                value: {
+                  messaging_product: 'whatsapp',
+                  messages: [msg],
+                  contacts: parsed.contacts,
+                  metadata: parsed.value.metadata,
+                },
+              }],
+            }],
+          });
+
+          const webhookUrl = targetWebhookUrl;
+          after(async () => {
+            try {
+              await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: n8nPayload,
+              });
+            } catch (err) {
+              console.error('Erro ao notificar n8n:', err);
+            }
+          });
+        }
       }
     } catch (err) {
       console.error('Erro ao processar mensagem:', err);

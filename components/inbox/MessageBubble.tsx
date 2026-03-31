@@ -76,6 +76,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <audio controls className="mb-2 max-w-full" src={message.mediaUrl} />
         )}
 
+        {message.type === 'audio' && !message.mediaUrl && (
+          <div className="flex items-center gap-2 text-zinc-400 mb-2">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 3a4 4 0 0 1 4 4v5a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4zm-1 14.93A7.005 7.005 0 0 1 5 11h2a5 5 0 0 0 10 0h2a7.005 7.005 0 0 1-6 6.93V21h3v2H8v-2h3v-3.07z"/></svg>
+            <span className="text-xs italic">[audio]</span>
+          </div>
+        )}
+
         {/* Texto */}
         {message.body && (
           <p className="whitespace-pre-wrap break-words">{message.body}</p>

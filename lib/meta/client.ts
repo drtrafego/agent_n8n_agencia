@@ -1,7 +1,8 @@
 const GRAPH_API_VERSION = 'v25.0';
 
-function getBaseUrl() {
-  return `https://graph.facebook.com/${GRAPH_API_VERSION}/${process.env.META_PHONE_NUMBER_ID}`;
+function getBaseUrl(phoneNumberId?: string) {
+  const id = phoneNumberId || process.env.META_PHONE_NUMBER_ID;
+  return `https://graph.facebook.com/${GRAPH_API_VERSION}/${id}`;
 }
 
 function getHeaders() {
@@ -33,8 +34,8 @@ async function metaFetch<T>(
   }
 }
 
-export async function sendTextMessage(to: string, text: string) {
-  return metaFetch(`${getBaseUrl()}/messages`, {
+export async function sendTextMessage(to: string, text: string, phoneNumberId?: string) {
+  return metaFetch(`${getBaseUrl(phoneNumberId)}/messages`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
@@ -91,7 +92,10 @@ export async function downloadMedia(mediaId: string): Promise<Buffer | null> {
         },
       }
     );
-    if (!urlRes.ok) return null;
+    if (!urlRes.ok) {
+      console.error('downloadMedia: falha ao buscar URL', mediaId, urlRes.status, await urlRes.text().catch(() => ''));
+      return null;
+    }
     const { url } = await urlRes.json();
 
     // 2. Baixar binário
@@ -100,9 +104,13 @@ export async function downloadMedia(mediaId: string): Promise<Buffer | null> {
         Authorization: `Bearer ${process.env.META_WHATSAPP_TOKEN}`,
       },
     });
-    if (!mediaRes.ok) return null;
+    if (!mediaRes.ok) {
+      console.error('downloadMedia: falha ao baixar binário', mediaId, mediaRes.status);
+      return null;
+    }
     return Buffer.from(await mediaRes.arrayBuffer());
-  } catch {
+  } catch (err) {
+    console.error('downloadMedia: erro inesperado', mediaId, err);
     return null;
   }
 }
