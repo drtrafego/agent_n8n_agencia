@@ -50,6 +50,8 @@ export async function PATCH(
 
     const body = await req.json();
 
+    const followupCount = body.followup_count !== undefined ? Number(body.followup_count) : null;
+
     await db.execute(sql`
       UPDATE contacts SET
         nome = COALESCE(${body.nome ?? null}, nome),
@@ -57,6 +59,7 @@ export async function PATCH(
         nicho = COALESCE(${body.nicho ?? null}, nicho),
         source = COALESCE(${body.source ?? null}, source),
         stage = COALESCE(${body.stage ?? null}, stage),
+        followup_count = COALESCE(${followupCount}, followup_count),
         stage_updated_at = CASE WHEN ${body.stage ?? null} IS NOT NULL THEN NOW() ELSE stage_updated_at END,
         updated_at = NOW()
       WHERE id = ${contactId}
