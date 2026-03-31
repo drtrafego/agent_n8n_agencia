@@ -18,9 +18,18 @@ function StatusIcon({ status }: { status: string }) {
   return null;
 }
 
+function proxyUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.includes('private.blob.vercel-storage.com')) {
+    return `/api/whatsapp/media-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isInbound = message.direction === 'inbound';
   const isBot = message.sentBy === 'bot';
+  const mediaUrl = proxyUrl(mediaUrl);
 
   const bubbleClass = cn(
     'max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm',
@@ -47,20 +56,20 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
       <div className={bubbleClass}>
         {/* Mídia */}
-        {message.type === 'image' && message.mediaUrl && (
+        {message.type === 'image' && mediaUrl && (
           <div className="mb-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={message.mediaUrl}
+              src={mediaUrl}
               alt="Imagem"
               className="rounded-lg max-h-60 w-auto"
             />
           </div>
         )}
 
-        {message.type === 'document' && message.mediaUrl && (
+        {message.type === 'document' && mediaUrl && (
           <a
-            href={message.mediaUrl}
+            href={mediaUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 mb-2 text-current hover:opacity-80"
@@ -72,11 +81,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </a>
         )}
 
-        {message.type === 'audio' && message.mediaUrl && (
-          <audio controls className="mb-2 max-w-full" src={message.mediaUrl} />
+        {message.type === 'audio' && mediaUrl && (
+          <audio controls className="mb-2 max-w-full" src={mediaUrl} />
         )}
 
-        {message.type === 'audio' && !message.mediaUrl && (
+        {message.type === 'audio' && !mediaUrl && (
           <div className="flex items-center gap-2 text-zinc-400 mb-2">
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 3a4 4 0 0 1 4 4v5a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4zm-1 14.93A7.005 7.005 0 0 1 5 11h2a5 5 0 0 0 10 0h2a7.005 7.005 0 0 1-6 6.93V21h3v2H8v-2h3v-3.07z"/></svg>
             <span className="text-xs italic">[audio]</span>
