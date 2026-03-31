@@ -65,19 +65,19 @@ reagend AS (
 SELECT crm_contact_id, phone, followup_count,
   CASE
     WHEN followup_count = 0 THEN
-      'Oi ' || TRIM(nome) || '! Vi que nao conseguimos terminar de conversar. Me conta: qual e o maior desafio do seu negocio hoje?'
+      'Oi ' || TRIM(nome) || '! Aqui e a ClaudIA, do Agente 24 Horas. Vi que nao conseguimos terminar de conversar. Voce tem equipe atendendo seus clientes fora do horario comercial ou fica tudo parado?'
     WHEN followup_count = 1 THEN
-      'Oi ' || TRIM(nome) || '! Separei um caso de sucesso do seu setor que acho que vai te interessar. Posso te mandar?'
+      'Oi ' || TRIM(nome) || '! Passando aqui rapidinho. Nossos clientes estao usando o Agente 24 Horas pra atender e qualificar leads automaticamente no WhatsApp, 24h por dia, sem precisar contratar ninguem. Quer que eu te mostre como funciona no seu segmento?'
     WHEN followup_count = 2 THEN
-      'Oi ' || TRIM(nome) || '! Ultima mensagem, prometo. Essa semana ainda tenho horarios pra uma sessao gratuita de implementacao. Quer garantir o seu?'
+      'Oi ' || TRIM(nome) || '! So pra voce ter ideia: o Agente 24 Horas custa menos que um funcionario e nao tira ferias, nao falta, nao desliga nunca. A gente configura tudo pra voce, e so aprovar. Posso te mostrar essa semana?'
     WHEN followup_count = 3 THEN
-      'Oi ' || TRIM(nome) || '! Sei que o dia a dia e corrido. Tenho um conteudo rapido que mostra como nossos clientes estao economizando tempo com o Agente de IA. Posso te enviar?'
+      'Oi ' || TRIM(nome) || '! Sei que o dia a dia e corrido. Ainda tenho horarios essa semana pra uma sessao rapida onde mostro o Agente funcionando ao vivo no WhatsApp. Sao 15 minutinhos. Quer garantir o seu?'
     WHEN followup_count = 4 THEN
-      'Oi ' || TRIM(nome) || '! Ultima mensagem, prometo. Se precisar de algo no futuro, e so mandar mensagem aqui. Fico a disposicao! Desejo sucesso no seu negocio.'
+      'Oi ' || TRIM(nome) || '! Ultima mensagem, prometo. Se no futuro precisar automatizar o atendimento do seu negocio no WhatsApp, e so me chamar aqui. Desejo muito sucesso!'
     WHEN followup_count = 99 THEN
-      'Oi ' || TRIM(nome) || '! Tudo bem? Vi que tinhamos uma reuniao agendada mas nao conseguimos nos falar. Sem problemas! So queria lembrar que o Agente de IA pode te ajudar a escalar o atendimento do seu negocio, funciona 24h. Quer reagendar pra essa semana?'
+      'Oi ' || TRIM(nome) || '! Tudo bem? Vi que tinhamos uma reuniao agendada mas nao conseguimos nos falar. Sem problemas! O Agente 24 Horas continua disponivel pra voce. Quer reagendar pra essa semana? Tenho horarios livres.'
     ELSE
-      'Oi ' || TRIM(nome) || '! Tudo bem? Ficou alguma duvida sobre o Agente de IA? Estou aqui!'
+      'Oi ' || TRIM(nome) || '! Tudo bem? Ficou alguma duvida sobre o Agente 24 Horas? Estou aqui pra te ajudar!'
   END AS body
 FROM (
   SELECT * FROM eligible
