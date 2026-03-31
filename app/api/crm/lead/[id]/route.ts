@@ -53,14 +53,14 @@ export async function PATCH(
     // Build SQL dynamically using Drizzle sql template chunks
     const chunks: ReturnType<typeof sql>[] = [];
 
-    if (body.nome !== undefined && body.nome !== null && body.nome !== '') {
-      chunks.push(sql`nome = ${body.nome}`);
+    if (body.nome !== undefined && body.nome !== null) {
+      chunks.push(sql`nome = ${body.nome || null}`);
     }
     if (body.email !== undefined && body.email !== null) {
-      chunks.push(sql`email = ${body.email}`);
+      chunks.push(sql`email = ${body.email || null}`);
     }
-    if (body.nicho !== undefined && body.nicho !== null && body.nicho !== '') {
-      chunks.push(sql`nicho = ${body.nicho}`);
+    if (body.nicho !== undefined && body.nicho !== null) {
+      chunks.push(sql`nicho = ${body.nicho || null}`);
     }
     if (body.source !== undefined && body.source !== null) {
       chunks.push(sql`source = ${body.source}`);
