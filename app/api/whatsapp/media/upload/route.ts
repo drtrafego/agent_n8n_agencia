@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const filename = file.name || `upload-${Date.now()}`;
 
     const blob = await put(`whatsapp/uploads/${Date.now()}-${filename}`, buffer, {
-      access: 'public',
+      access: 'private',
       contentType: file.type || 'application/octet-stream',
     });
 

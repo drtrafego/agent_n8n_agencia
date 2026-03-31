@@ -3,7 +3,7 @@ import { waDb } from '@/lib/db/whatsapp';
 import { waMessages } from '@/lib/db/whatsapp-schema';
 import { sql, eq, isNull, inArray } from 'drizzle-orm';
 import { downloadMedia } from '@/lib/meta/client';
-import { put } from '@vercel/blob';
+import { put, getDownloadUrl } from '@vercel/blob';
 
 export async function POST() {
   try {
@@ -84,13 +84,15 @@ export async function POST() {
       const filename = `${mediaId}.${ext}`;
 
       const blob = await put(`whatsapp/${mediaId}/${filename}`, buffer, {
-        access: 'public',
+        access: 'private',
         contentType: mime,
       });
 
+      const downloadUrl = await getDownloadUrl(blob.url);
+
       await waDb
         .update(waMessages)
-        .set({ mediaUrl: blob.url })
+        .set({ mediaUrl: downloadUrl })
         .where(eq(waMessages.id, msg.id));
 
       fixed++;

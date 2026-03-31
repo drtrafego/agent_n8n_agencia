@@ -19,7 +19,7 @@ import {
   type MetaWebhookPayload,
 } from '@/lib/meta/webhook';
 import { downloadMedia } from '@/lib/meta/client';
-import { put } from '@vercel/blob';
+import { put, getDownloadUrl } from '@vercel/blob';
 
 // GET — verificação do webhook pela Meta
 export async function GET(req: NextRequest) {
@@ -175,10 +175,10 @@ export async function POST(req: NextRequest) {
             const ext = (mime.split('/')[1] || 'bin').split(';')[0].trim();
             const filename = getFilename(msg) || `${mediaId}.${ext}`;
             const blob = await put(`whatsapp/${mediaId}/${filename}`, buffer, {
-              access: 'public',
+              access: 'private',
               contentType: mime,
             });
-            mediaUrl = blob.url;
+            mediaUrl = await getDownloadUrl(blob.url);
           }
         } catch (err) {
           console.error('Erro ao baixar mídia:', err);

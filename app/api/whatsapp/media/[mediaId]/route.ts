@@ -30,7 +30,7 @@ export async function GET(
     }
 
     const blob = await put(`whatsapp/${mediaId}/media`, buffer, {
-      access: 'public',
+      access: 'private',
     });
 
     return NextResponse.redirect(blob.url);
