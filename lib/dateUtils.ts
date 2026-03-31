@@ -1,9 +1,23 @@
 /**
  * Utilitários de data/hora sempre em America/Sao_Paulo (UTC-3).
  * Usa en-CA locale pois é YYYY-MM-DD (confiável em todos os ambientes).
+ *
+ * IMPORTANTE: Supabase retorna timestamps SEM sufixo Z (ex: "2026-03-30T22:27:49").
+ * Sem o Z, new Date() interpreta como horário local do navegador, causando offset.
+ * A função toUTC() garante que timestamps sem TZ sejam tratados como UTC.
  */
 
 const TZ = 'America/Sao_Paulo';
+
+/** Garante que timestamps sem timezone info sejam interpretados como UTC */
+function toUTC(date: Date | string): Date {
+  if (date instanceof Date) return date;
+  const s = String(date);
+  // Se já tem Z, +XX:XX ou -XX:XX, está ok
+  if (/Z|[+-]\d{2}:\d{2}$/.test(s)) return new Date(s);
+  // Sem timezone → adicionar Z para interpretar como UTC
+  return new Date(s + 'Z');
+}
 
 /** Formata hora:minuto no fuso BRT — "14:32" */
 export function formatTime(date: Date | string): string {
@@ -11,14 +25,14 @@ export function formatTime(date: Date | string): string {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: TZ,
-  }).format(new Date(date));
+  }).format(toUTC(date));
 }
 
 /** Retorna "YYYY-MM-DD" no fuso BRT para agrupar por dia */
 export function toLocalDateKey(date: Date | string): string {
   // en-CA sempre retorna YYYY-MM-DD — confiável em qualquer ambiente
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(
-    new Date(date)
+    toUTC(date)
   );
 }
 
@@ -63,7 +77,7 @@ export function getDaySeparatorLabel(dateKey: string): string {
 
 /** Tempo relativo compacto para a lista: "agora" / "5 min" / "14:32" / "ontem" / "27/03" */
 export function formatRelativeShort(date: Date | string): string {
-  const d = new Date(date);
+  const d = toUTC(date);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMin = Math.floor(diffMs / 60000);
@@ -75,7 +89,7 @@ export function formatRelativeShort(date: Date | string): string {
   const yesterdayKey = addDaysBRT(-1);
   const msgKey = toLocalDateKey(d);
 
-  if (msgKey === todayKey) return formatTime(d);
+  if (msgKey === todayKey) return formatTime(date);
   if (msgKey === yesterdayKey) return 'ontem';
 
   // Mais de 2 dias: DD/MM
@@ -83,5 +97,5 @@ export function formatRelativeShort(date: Date | string): string {
     day: '2-digit',
     month: '2-digit',
     timeZone: TZ,
-  }).format(d);
+  }).format(toUTC(date));
 }
