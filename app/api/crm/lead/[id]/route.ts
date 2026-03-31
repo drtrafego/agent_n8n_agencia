@@ -50,20 +50,32 @@ export async function PATCH(
 
     const body = await req.json();
 
-    const followupCount = body.followup_count !== undefined ? Number(body.followup_count) : null;
+    // Build SQL dynamically using Drizzle sql template chunks
+    const chunks: ReturnType<typeof sql>[] = [];
 
-    await db.execute(sql`
-      UPDATE contacts SET
-        nome = COALESCE(${body.nome ?? null}, nome),
-        email = COALESCE(${body.email ?? null}, email),
-        nicho = COALESCE(${body.nicho ?? null}, nicho),
-        source = COALESCE(${body.source ?? null}, source),
-        stage = COALESCE(${body.stage ?? null}, stage),
-        followup_count = COALESCE(${followupCount}, followup_count),
-        stage_updated_at = CASE WHEN ${body.stage ?? null} IS NOT NULL THEN NOW() ELSE stage_updated_at END,
-        updated_at = NOW()
-      WHERE id = ${contactId}
-    `);
+    if (body.nome !== undefined && body.nome !== null && body.nome !== '') {
+      chunks.push(sql`nome = ${body.nome}`);
+    }
+    if (body.email !== undefined && body.email !== null) {
+      chunks.push(sql`email = ${body.email}`);
+    }
+    if (body.nicho !== undefined && body.nicho !== null && body.nicho !== '') {
+      chunks.push(sql`nicho = ${body.nicho}`);
+    }
+    if (body.source !== undefined && body.source !== null) {
+      chunks.push(sql`source = ${body.source}`);
+    }
+    if (body.stage !== undefined && body.stage !== null) {
+      chunks.push(sql`stage = ${body.stage}`);
+      chunks.push(sql`stage_updated_at = NOW()`);
+    }
+    if (body.followup_count !== undefined) {
+      chunks.push(sql`followup_count = ${Number(body.followup_count)}::int`);
+    }
+    chunks.push(sql`updated_at = NOW()`);
+
+    const setClauses = sql.join(chunks, sql`, `);
+    await db.execute(sql`UPDATE contacts SET ${setClauses} WHERE id = ${contactId}`);
 
     return NextResponse.json({ success: true });
   } catch (err) {
