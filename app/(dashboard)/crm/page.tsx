@@ -273,9 +273,14 @@ function LeadCard({
             {lead.nicho}
           </span>
         )}
-        {followups > 0 && (
+        {followups > 0 && followups < 99 && (
           <span title={`${followups} follow-up(s) automatico(s) enviado(s)`} className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-900/40 text-amber-300 border border-amber-800/30">
             {followups}x follow-up
+          </span>
+        )}
+        {followups >= 99 && (
+          <span title="Lembrete de reagendamento enviado (lead tinha reuniao agendada)" className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-pink-900/40 text-pink-300 border border-pink-800/30">
+            Lembrete reagendamento
           </span>
         )}
       </div>
@@ -450,7 +455,8 @@ function LeadModal({
                   <span className="flex items-center gap-1 text-[11px] text-zinc-500"><Phone size={10} />{lead.telefone}</span>
                 )}
                 {lead.nicho && <span className="text-[11px] text-indigo-400">{lead.nicho}</span>}
-                {followups > 0 && <span className="text-[11px] text-amber-400">{followups}x follow-up</span>}
+                {followups > 0 && followups < 99 && <span className="text-[11px] text-amber-400">{followups}x follow-up</span>}
+                {followups >= 99 && <span className="text-[11px] text-pink-400">Lembrete reagendamento</span>}
                 <span className="text-[11px] text-zinc-600">Criado {timeAgo(lead.created_at)}</span>
               </div>
             </div>
@@ -507,8 +513,8 @@ function LeadModal({
                     <p className="text-[10px] text-zinc-500">Mensagens</p>
                   </div>
                   <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
-                    <p className="text-lg font-bold text-zinc-100">{followups}</p>
-                    <p className="text-[10px] text-zinc-500">Follow-ups</p>
+                    <p className="text-lg font-bold text-zinc-100">{followups >= 99 ? '✓' : followups}</p>
+                    <p className="text-[10px] text-zinc-500">{followups >= 99 ? 'Reagendamento' : 'Follow-ups'}</p>
                   </div>
                   <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
                     <p className="text-lg font-bold text-zinc-100">{timeAgo(lead.created_at) || 'N/A'}</p>
