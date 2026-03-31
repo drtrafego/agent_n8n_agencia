@@ -67,11 +67,11 @@ SELECT crm_contact_id, phone, followup_count,
     WHEN followup_count = 0 THEN
       'Oi ' || TRIM(nome) || E'! Para eu te mostrar de forma pr\u00e1tica como funciona no seu caso, me conta: seu neg\u00f3cio \u00e9 mais voltado para sa\u00fade, servi\u00e7os, im\u00f3veis, varejo ou outro segmento?'
     WHEN followup_count = 1 THEN
-      'Oi ' || TRIM(nome) || E'! Vi que voc\u00ea se interessou pelo atendimento autom\u00e1tico. Aqui a gente configura tudo pra voc\u00ea, zero trabalho do seu lado. Quer que eu te mostre um caso do seu segmento?'
+      'Oi ' || TRIM(nome) || E'! Vi que voc\u00ea se interessou no Agente de IA. A gente treina o agente com o seu neg\u00f3cio e entrega tudo pronto no seu WhatsApp. Zero trabalho do seu lado. Quer ver um caso do seu segmento?'
     WHEN followup_count = 2 THEN
-      'Oi ' || TRIM(nome) || E'! Nossos clientes est\u00e3o atendendo 24h no WhatsApp sem precisar contratar ning\u00faem. A gente entrega tudo pronto, voc\u00ea s\u00f3 aprova. Bora conversar 15 minutinhos essa semana?'
+      'Oi ' || TRIM(nome) || E'! O Agente de IA \u00e9 como ter um vendedor que nunca dorme, nunca falta e custa menos que um funcion\u00e1rio. Nossos clientes est\u00e3o qualificando leads e agendando reuni\u00f5es no piloto autom\u00e1tico. Faz sentido conversarmos?'
     WHEN followup_count = 3 THEN
-      'Oi ' || TRIM(nome) || E'! Ainda tenho uns hor\u00e1rios essa semana pra te mostrar ao vivo como funciona. S\u00e3o 15 minutinhos e voc\u00ea j\u00e1 sai com uma vis\u00e3o clara de como aplicar no seu neg\u00f3cio. Posso reservar um pra voc\u00ea?'
+      'Oi ' || TRIM(nome) || E'! Ainda tenho uns hor\u00e1rios essa semana pra te mostrar o Agente funcionando ao vivo no WhatsApp. S\u00e3o 15 minutos e voc\u00ea j\u00e1 sai sabendo exatamente como aplicar no seu neg\u00f3cio. Posso reservar um pra voc\u00ea?'
     WHEN followup_count = 4 THEN
       'Oi ' || TRIM(nome) || E'! \u00daltima mensagem por aqui. Se no futuro precisar automatizar o atendimento do seu neg\u00f3cio, \u00e9 s\u00f3 me chamar. Desejo muito sucesso!'
     WHEN followup_count = 99 THEN
