@@ -101,10 +101,24 @@ export async function POST(req: NextRequest) {
         .where(eq(waContacts.waId, waId))
         .limit(1);
 
-      // Detect referral — tudo que chega aqui é WhatsApp
-      // Click-to-WhatsApp ad → 'whatsapp_campanha', direto → 'whatsapp'
+      // Detect referral e origem do lead
+      // Click-to-WhatsApp ad → 'whatsapp_campanha'
+      // Mensagem pre-preenchida do site → 'site'
+      // Direto → 'whatsapp'
       const referral = msg.referral;
-      const source = referral?.source_type === 'ad' ? 'whatsapp_campanha' : 'whatsapp';
+      const msgText = (msg.text?.body || '').toLowerCase();
+      const isFromSite = msgText.includes('agente 24') || msgText.includes('cheguei do site') || msgText.includes('vi no site');
+      const source = referral?.source_type === 'ad'
+        ? 'whatsapp_campanha'
+        : isFromSite
+          ? 'site'
+          : 'whatsapp';
+
+      // Extrair dados de rastreamento do referral (Click-to-WhatsApp ads)
+      const adId = referral?.source_id || null;
+      const adHeadline = referral?.headline || null;
+      const adBody = referral?.body || null;
+      const adSourceUrl = referral?.source_url || null;
 
       if (!contact) {
         const [created] = await waDb
@@ -123,11 +137,12 @@ export async function POST(req: NextRequest) {
           .where(eq(waContacts.id, contact.id));
       }
 
-      // Save source in contacts table (n8n bot table)
+      // Save source + tracking data in contacts table (n8n bot table)
       // whatsapp_campanha sobrescreve whatsapp, mas nenhum sobrescreve google/meta
+      // Dados de rastreamento (ad_id, headline) so salvam se vierem no referral
       await waDb.execute(
-        sql`INSERT INTO contacts (telefone, nome, source, last_lead_msg_at)
-            VALUES (${waId}, ${profile?.profile?.name ?? waId}, ${source}, NOW())
+        sql`INSERT INTO contacts (telefone, nome, source, last_lead_msg_at, ad_id, utm_content, utm_source, utm_medium)
+            VALUES (${waId}, ${profile?.profile?.name ?? waId}, ${source}, NOW(), ${adId}, ${adHeadline}, ${adSourceUrl}, ${adBody})
             ON CONFLICT (telefone) DO UPDATE SET
               source = CASE
                 WHEN contacts.source IS NULL THEN ${source}
@@ -135,9 +150,54 @@ export async function POST(req: NextRequest) {
                 WHEN contacts.source = 'direto' THEN ${source}
                 ELSE contacts.source
               END,
+              ad_id = CASE WHEN ${adId} IS NOT NULL THEN ${adId} ELSE contacts.ad_id END,
+              utm_content = CASE WHEN ${adHeadline} IS NOT NULL THEN ${adHeadline} ELSE contacts.utm_content END,
+              utm_source = CASE WHEN ${adSourceUrl} IS NOT NULL THEN ${adSourceUrl} ELSE contacts.utm_source END,
+              utm_medium = CASE WHEN ${adBody} IS NOT NULL THEN ${adBody} ELSE contacts.utm_medium END,
               nome = COALESCE(NULLIF(${profile?.profile?.name ?? ''}, ''), contacts.nome),
-              last_lead_msg_at = NOW()`
+              last_lead_msg_at = NOW(),
+              stage = CASE
+                WHEN contacts.stage = 'sem_interesse' THEN 'interesse'
+                ELSE contacts.stage
+              END,
+              stage_updated_at = CASE
+                WHEN contacts.stage = 'sem_interesse' THEN NOW()
+                ELSE contacts.stage_updated_at
+              END`
       );
+
+      // Enriquecer dados de rastreamento via Meta Graph API (fire and forget)
+      if (adId) {
+        after(async () => {
+          try {
+            const metaToken = process.env.META_WHATSAPP_TOKEN;
+            if (!metaToken) return;
+            const adRes = await fetch(
+              `https://graph.facebook.com/v21.0/${adId}?fields=name,adset_id,campaign_id,adset{name},campaign{name}&access_token=${metaToken}`
+            );
+            if (!adRes.ok) return;
+            const adData = await adRes.json();
+            const adName = adData.name || null;
+            const campaignId = adData.campaign_id || adData.campaign?.id || null;
+            const campaignName = adData.campaign?.name || null;
+            const adsetId = adData.adset_id || adData.adset?.id || null;
+            const adsetName = adData.adset?.name || null;
+            if (adName || campaignId || adsetId) {
+              await waDb.execute(
+                sql`UPDATE contacts SET
+                  ad_name = COALESCE(${adName}, ad_name),
+                  campaign_id = COALESCE(${campaignId}, campaign_id),
+                  campaign_name = COALESCE(${campaignName}, campaign_name),
+                  adset_id = COALESCE(${adsetId}, adset_id),
+                  adset_name = COALESCE(${adsetName}, adset_name)
+                WHERE telefone = ${waId} AND ad_id = ${adId}`
+              );
+            }
+          } catch (err) {
+            console.error('Erro ao enriquecer dados do ad:', err);
+          }
+        });
+      }
 
       // Upsert conversa
       let [conv] = await waDb

@@ -12,69 +12,14 @@ const VALID_STAGES = [
   'sem_interesse',
 ] as const;
 
-function classifyStage(obs: string | null): string | null {
-  if (!obs) return null;
-  const o = obs.toLowerCase();
-  if (o.includes('realizada') || o.includes('reuniao realizada') || o.includes('reunião feita') || o.includes('call realizada')) return 'realizada';
-  if (o.includes('agendad') || o.includes('convite disparado') || o.includes('call agendada')) return 'agendado';
-  if (o.includes('sem interesse')) return 'sem_interesse';
-  if (o.includes('email') || o.includes('qualificand')) return 'interesse';
-  if (o.length > 20) return 'qualificando';
-  return null;
-}
-
-function classifyNicho(obs: string | null): string | null {
-  if (!obs) return null;
-  const o = obs.toLowerCase();
-  if (/cl[ií]nica|odonto|dentist|sa[uú]de|fisio|m[eé]dic/.test(o)) return 'Saude';
-  if (/imobili|im[oó]veis|corretor/.test(o)) return 'Imobiliaria';
-  if (/ecommerce|eletr[oô]n|loja|varejo/.test(o)) return 'E-commerce';
-  if (/advog|jur[ií]dic|direito/.test(o)) return 'Advocacia';
-  if (/restaurante|delivery/.test(o)) return 'Alimentacao';
-  if (/academia|crossfit|fitness/.test(o)) return 'Fitness';
-  if (/seguro/.test(o)) return 'Seguros';
-  if (/est[eé]tica|beleza|beauty/.test(o)) return 'Estetica';
-  if (/contab|fiscal/.test(o)) return 'Contabilidade';
-  if (/concession|ve[ií]culo/.test(o)) return 'Automotivo';
-  if (/pet|banho|tosa/.test(o)) return 'Pet Shop';
-  if (/arquitet/.test(o)) return 'Arquitetura';
-  if (/viag|turismo|ag[eê]ncia de viag/.test(o)) return 'Turismo';
-  if (/constru|material/.test(o)) return 'Construcao';
-  return null;
-}
-
 export async function GET() {
   try {
-    // Auto-classify contacts that are still 'novo' but have observacoes
-    // IMPORTANTE: so reclassifica stage='novo' para nao interferir com stages manuais ou reengagement
+    // Auto-classify NICHO only (nicho extraction from observacoes_sdr)
+    // STAGE e controlado exclusivamente pelo bot n8n (via postgresTool $fromAI)
+    // e por drag-and-drop manual no CRM. Nao reclassificamos stage aqui
+    // para evitar falsos positivos (ex: bot escreve "demonstrou interesse" em primeira interacao).
     await db.execute(sql`
       UPDATE contacts SET
-        stage = CASE
-          WHEN observacoes_sdr ILIKE '%realizada%' OR observacoes_sdr ILIKE '%reuniao realizada%'
-               OR observacoes_sdr ILIKE '%reunião feita%' OR observacoes_sdr ILIKE '%call realizada%'
-               OR observacoes_sdr ILIKE '%reunião realizada%' OR observacoes_sdr ILIKE '%apresentacao feita%'
-               OR observacoes_sdr ILIKE '%apresentação feita%'
-            THEN 'realizada'
-          WHEN observacoes_sdr ILIKE '%Status: agendado%'
-               OR observacoes_sdr ILIKE '%convite disparado%' OR observacoes_sdr ILIKE '%call agendada%'
-               OR observacoes_sdr ILIKE '%reuniao agendada%' OR observacoes_sdr ILIKE '%reunião agendada%'
-               OR observacoes_sdr ILIKE '%agendou%'
-               OR observacoes_sdr ILIKE '%confirmou%horario%' OR observacoes_sdr ILIKE '%confirmou%horário%'
-            THEN 'agendado'
-          WHEN observacoes_sdr ILIKE '%Status: sem interesse%' OR observacoes_sdr ILIKE '%sem interesse%'
-               OR observacoes_sdr ILIKE '%nao quer%' OR observacoes_sdr ILIKE '%não quer%'
-               OR observacoes_sdr ILIKE '%desistiu%' OR observacoes_sdr ILIKE '%recusou%'
-            THEN 'sem_interesse'
-          WHEN observacoes_sdr ILIKE '%Status: interesse%' OR observacoes_sdr ILIKE '%pediu para agendar%'
-               OR observacoes_sdr ILIKE '%escolheu hor%' OR observacoes_sdr ILIKE '%quer saber mais%'
-               OR observacoes_sdr ILIKE '%demonstrou interesse%' OR observacoes_sdr ILIKE '%quer agendar%'
-               OR observacoes_sdr ILIKE '%interessado%' OR observacoes_sdr ILIKE '%interessada%'
-               OR observacoes_sdr ILIKE '%pediu proposta%' OR observacoes_sdr ILIKE '%quer proposta%'
-            THEN 'interesse'
-          WHEN observacoes_sdr ILIKE '%Status: qualificando%' OR LENGTH(observacoes_sdr) > 20
-            THEN 'qualificando'
-          ELSE stage
-        END,
         nicho = CASE
           WHEN nicho IS NOT NULL THEN nicho
           WHEN observacoes_sdr ILIKE '%clinica%' OR observacoes_sdr ILIKE '%clínica%' OR observacoes_sdr ILIKE '%odonto%' OR observacoes_sdr ILIKE '%fisio%' OR observacoes_sdr ILIKE '%saude%' OR observacoes_sdr ILIKE '%saúde%' OR observacoes_sdr ILIKE '%medic%' OR observacoes_sdr ILIKE '%médic%' OR observacoes_sdr ILIKE '%dentist%' THEN 'Saude'
@@ -92,9 +37,19 @@ export async function GET() {
           WHEN observacoes_sdr ILIKE '%viag%' OR observacoes_sdr ILIKE '%turismo%' THEN 'Turismo'
           WHEN observacoes_sdr ILIKE '%constru%' OR observacoes_sdr ILIKE '%material%' THEN 'Construcao'
           ELSE nicho
-        END,
+        END
+      WHERE nicho IS NULL AND observacoes_sdr IS NOT NULL AND LENGTH(observacoes_sdr) > 10
+    `);
+
+    // Leads com 4+ follow-ups sem resposta → sem_interesse
+    // So move leads que ainda estao em stages iniciais (novo, qualificando)
+    // Nao toca em leads que ja avancaram (interesse, agendado, realizada, convertido)
+    await db.execute(sql`
+      UPDATE contacts SET
+        stage = 'sem_interesse',
         stage_updated_at = NOW()
-      WHERE stage = 'novo' AND observacoes_sdr IS NOT NULL AND LENGTH(observacoes_sdr) > 10
+      WHERE followup_count >= 4
+        AND stage IN ('novo', 'qualificando')
     `);
 
     const rows = await db.execute<{
@@ -108,6 +63,16 @@ export async function GET() {
       stage_updated_at: string | null;
       created_at: string;
       source: string | null;
+      ad_id: string | null;
+      ad_name: string | null;
+      campaign_id: string | null;
+      campaign_name: string | null;
+      adset_id: string | null;
+      adset_name: string | null;
+      utm_source: string | null;
+      utm_medium: string | null;
+      utm_campaign: string | null;
+      utm_content: string | null;
       wa_contact_name: string | null;
       wa_phone: string | null;
       last_message: string | null;
@@ -128,6 +93,16 @@ export async function GET() {
         c.stage_updated_at,
         c.created_at,
         c.source,
+        c.ad_id,
+        c.ad_name,
+        c.campaign_id,
+        c.campaign_name,
+        c.adset_id,
+        c.adset_name,
+        c.utm_source,
+        c.utm_medium,
+        c.utm_campaign,
+        c.utm_content,
         wc.name as wa_contact_name,
         wc.phone as wa_phone,
         conv.last_message,

@@ -21,6 +21,16 @@ interface Lead {
   stage_updated_at: string | null;
   created_at: string;
   source: string | null;
+  ad_id: string | null;
+  ad_name: string | null;
+  campaign_id: string | null;
+  campaign_name: string | null;
+  adset_id: string | null;
+  adset_name: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
   wa_contact_name: string | null;
   wa_phone: string | null;
   last_message: string | null;
@@ -50,6 +60,16 @@ interface LeadDetail {
     observacoes_sdr: string | null;
     stage: string;
     source: string | null;
+    ad_id: string | null;
+    ad_name: string | null;
+    campaign_id: string | null;
+    campaign_name: string | null;
+    adset_id: string | null;
+    adset_name: string | null;
+    utm_source: string | null;
+    utm_medium: string | null;
+    utm_campaign: string | null;
+    utm_content: string | null;
     created_at: string;
     updated_at: string;
     followup_count?: number;
@@ -73,6 +93,7 @@ const STAGES = [
 
 const SOURCE_OPTIONS = [
   { value: '', label: 'Todas origens' },
+  { value: 'site', label: 'Site' },
   { value: 'whatsapp', label: 'WhatsApp Direto' },
   { value: 'whatsapp_campanha', label: 'WhatsApp Campanha' },
   { value: 'campanha', label: 'Meta Ads (legado)' },
@@ -92,6 +113,7 @@ const SORT_OPTIONS = [
 // ─── Source Icon ─────────────────────────────────────────────────────
 
 const SOURCE_LABELS: Record<string, string> = {
+  site: 'Origem: Site',
   google: 'Origem: Google Ads',
   whatsapp: 'Origem: WhatsApp direto',
   whatsapp_campanha: 'Origem: WhatsApp via campanha (anuncio)',
@@ -104,6 +126,15 @@ const SOURCE_LABELS: Record<string, string> = {
 function SourceIcon({ source, size = 14 }: { source: string | null; size?: number }) {
   const label = SOURCE_LABELS[source || ''] || 'Origem: WhatsApp';
 
+  if (source === 'site') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0" aria-label={label}>
+        <title>{label}</title>
+        <circle cx="12" cy="12" r="10" stroke="#a78bfa" strokeWidth="2" fill="none"/>
+        <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z" stroke="#a78bfa" strokeWidth="2" fill="none"/>
+      </svg>
+    );
+  }
   if (source === 'google') {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0" aria-label={label}>
@@ -271,6 +302,11 @@ function LeadCard({
         {lead.nicho && (
           <span title="Nicho/segmento do lead" className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-900/40 text-indigo-300 border border-indigo-800/30">
             {lead.nicho}
+          </span>
+        )}
+        {(lead.ad_id || lead.utm_content) && (
+          <span title={lead.utm_content ? `Anuncio: ${lead.utm_content}` : `Ad ID: ${lead.ad_id}`} className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-300 border border-blue-800/30">
+            {lead.campaign_name ? truncate(lead.campaign_name, 20) : 'Meta Ad'}
           </span>
         )}
         {followups > 0 && followups < 99 && (
@@ -562,6 +598,54 @@ function LeadModal({
                     </select>
                   </div>
                 </div>
+
+                {/* Rastreamento / Atribuicao */}
+                {(detail?.contact?.ad_id || detail?.contact?.utm_content || detail?.contact?.campaign_name || detail?.contact?.adset_name) && (
+                  <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <BarChart3 size={12} className="text-blue-400" />
+                      <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Rastreamento</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                      {detail.contact.ad_id && (
+                        <>
+                          <span className="text-[10px] text-zinc-500">Ad ID</span>
+                          <span className="text-[10px] text-zinc-300 font-mono truncate" title={detail.contact.ad_id}>{detail.contact.ad_id}</span>
+                        </>
+                      )}
+                      {detail.contact.ad_name && (
+                        <>
+                          <span className="text-[10px] text-zinc-500">Anuncio</span>
+                          <span className="text-[10px] text-zinc-300 truncate" title={detail.contact.ad_name}>{detail.contact.ad_name}</span>
+                        </>
+                      )}
+                      {detail.contact.campaign_name && (
+                        <>
+                          <span className="text-[10px] text-zinc-500">Campanha</span>
+                          <span className="text-[10px] text-zinc-300 truncate" title={detail.contact.campaign_name}>{detail.contact.campaign_name}</span>
+                        </>
+                      )}
+                      {detail.contact.adset_name && (
+                        <>
+                          <span className="text-[10px] text-zinc-500">Conjunto</span>
+                          <span className="text-[10px] text-zinc-300 truncate" title={detail.contact.adset_name}>{detail.contact.adset_name}</span>
+                        </>
+                      )}
+                      {detail.contact.utm_content && (
+                        <>
+                          <span className="text-[10px] text-zinc-500">Headline do anuncio</span>
+                          <span className="text-[10px] text-zinc-300 truncate" title={detail.contact.utm_content}>{detail.contact.utm_content}</span>
+                        </>
+                      )}
+                      {detail.contact.utm_source && (
+                        <>
+                          <span className="text-[10px] text-zinc-500">URL do anuncio</span>
+                          <span className="text-[10px] text-blue-400 truncate" title={detail.contact.utm_source}>{detail.contact.utm_source}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3 pt-2">
                   <button onClick={handleSave} disabled={saving}
