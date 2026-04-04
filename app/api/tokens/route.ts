@@ -1,11 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { waDb } from '@/lib/db/whatsapp';
 import { sql } from 'drizzle-orm';
+
+/** Auto-sync: se ultimo registro > 1h, dispara sync em background */
+async function maybeAutoSync() {
+  try {
+    const rows = await waDb.execute<{ newest: string | null }>(
+      sql`SELECT MAX(executed_at) as newest FROM wa_token_usage_logs`
+    );
+    const newest = (rows as unknown as { newest: string | null }[])[0]?.newest;
+    if (!newest) return true;
+    const ageMs = Date.now() - new Date(newest).getTime();
+    return ageMs > 60 * 60 * 1000; // > 1 hora
+  } catch {
+    return false;
+  }
+}
+
+async function triggerSync() {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://agente.casaldotrafego.com';
+  try {
+    await fetch(`${baseUrl}/api/tokens/sync`, { method: 'POST', cache: 'no-store' });
+  } catch (err) {
+    console.error('Auto-sync tokens falhou:', err);
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const days = Number(searchParams.get('days') || '30');
+
+    // Auto-sync em background se dados estiverem defasados > 1h
+    const needsSync = await maybeAutoSync();
+    if (needsSync) {
+      after(() => triggerSync());
+    }
 
     // ── Totais do período ──────────────────────────────────────────
     const totals = await waDb.execute<{
