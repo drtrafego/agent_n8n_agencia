@@ -2,5 +2,11 @@
   "framework": "nextjs",
   "buildCommand": "pnpm build",
   "installCommand": "pnpm install",
-  "regions": ["gru1"]
+  "regions": ["gru1"],
+  "crons": [
+    {
+      "path": "/api/cron/sync-tokens",
+      "schedule": "0 11 * * *"
+    }
+  ]
 }
