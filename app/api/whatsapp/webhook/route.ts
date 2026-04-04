@@ -138,65 +138,83 @@ export async function POST(req: NextRequest) {
       }
 
       // Save source + tracking data in contacts table (n8n bot table)
-      // whatsapp_campanha sobrescreve whatsapp, mas nenhum sobrescreve google/meta
-      // Dados de rastreamento (ad_id, headline) so salvam se vierem no referral
-      await waDb.execute(
-        sql`INSERT INTO contacts (telefone, nome, source, last_lead_msg_at, ad_id, utm_content, utm_source, utm_medium)
-            VALUES (${waId}, ${profile?.profile?.name ?? waId}, ${source}, NOW(), ${adId}, ${adHeadline}, ${adSourceUrl}, ${adBody})
-            ON CONFLICT (telefone) DO UPDATE SET
-              source = CASE
-                WHEN contacts.source IS NULL THEN ${source}
-                WHEN contacts.source = 'whatsapp' AND ${source} = 'whatsapp_campanha' THEN ${source}
-                WHEN contacts.source = 'direto' THEN ${source}
-                ELSE contacts.source
-              END,
-              ad_id = CASE WHEN ${adId} IS NOT NULL THEN ${adId} ELSE contacts.ad_id END,
-              utm_content = CASE WHEN ${adHeadline} IS NOT NULL THEN ${adHeadline} ELSE contacts.utm_content END,
-              utm_source = CASE WHEN ${adSourceUrl} IS NOT NULL THEN ${adSourceUrl} ELSE contacts.utm_source END,
-              utm_medium = CASE WHEN ${adBody} IS NOT NULL THEN ${adBody} ELSE contacts.utm_medium END,
-              nome = COALESCE(NULLIF(${profile?.profile?.name ?? ''}, ''), contacts.nome),
-              last_lead_msg_at = NOW(),
-              stage = CASE
-                WHEN contacts.stage = 'sem_interesse' THEN 'interesse'
-                ELSE contacts.stage
-              END,
-              stage_updated_at = CASE
-                WHEN contacts.stage = 'sem_interesse' THEN NOW()
-                ELSE contacts.stage_updated_at
-              END`
-      );
+      // Separado em operações simples para evitar falhas silenciosas
+      try {
+        const contactName = profile?.profile?.name || waId;
 
-      // Enriquecer dados de rastreamento via Meta Graph API (fire and forget)
-      if (adId) {
-        after(async () => {
-          try {
-            const metaToken = process.env.META_WHATSAPP_TOKEN;
-            if (!metaToken) return;
-            const adRes = await fetch(
-              `https://graph.facebook.com/v21.0/${adId}?fields=name,adset_id,campaign_id,adset{name},campaign{name}&access_token=${metaToken}`
-            );
-            if (!adRes.ok) return;
-            const adData = await adRes.json();
-            const adName = adData.name || null;
-            const campaignId = adData.campaign_id || adData.campaign?.id || null;
-            const campaignName = adData.campaign?.name || null;
-            const adsetId = adData.adset_id || adData.adset?.id || null;
-            const adsetName = adData.adset?.name || null;
-            if (adName || campaignId || adsetId) {
-              await waDb.execute(
-                sql`UPDATE contacts SET
-                  ad_name = COALESCE(${adName}, ad_name),
-                  campaign_id = COALESCE(${campaignId}, campaign_id),
-                  campaign_name = COALESCE(${campaignName}, campaign_name),
-                  adset_id = COALESCE(${adsetId}, adset_id),
-                  adset_name = COALESCE(${adsetName}, adset_name)
-                WHERE telefone = ${waId} AND ad_id = ${adId}`
+        // 1. Upsert básico: cria contato ou atualiza nome/last_lead_msg_at
+        await waDb.execute(
+          sql`INSERT INTO contacts (telefone, nome, source, last_lead_msg_at)
+              VALUES (${waId}, ${contactName}, ${source}, NOW())
+              ON CONFLICT (telefone) DO UPDATE SET
+                nome = COALESCE(NULLIF(EXCLUDED.nome, contacts.telefone), contacts.nome),
+                last_lead_msg_at = NOW()`
+        );
+
+        // 2. Atualizar source (whatsapp_campanha sobrescreve whatsapp/direto)
+        await waDb.execute(
+          sql`UPDATE contacts SET
+                source = CASE
+                  WHEN source IS NULL OR source = 'direto' THEN ${source}
+                  WHEN source = 'whatsapp' AND ${source} != 'whatsapp' THEN ${source}
+                  ELSE source
+                END
+              WHERE telefone = ${waId}`
+        );
+
+        // 3. Stage transition: sem_interesse → interesse quando lead volta a falar
+        await waDb.execute(
+          sql`UPDATE contacts SET
+                stage = 'interesse',
+                stage_updated_at = NOW()
+              WHERE telefone = ${waId} AND stage = 'sem_interesse'`
+        );
+
+        // 4. Tracking de anúncio (somente se veio referral)
+        if (adId) {
+          await waDb.execute(
+            sql`UPDATE contacts SET
+                  ad_id = ${adId},
+                  utm_content = ${adHeadline || ''},
+                  utm_source = ${adSourceUrl || ''},
+                  utm_medium = ${adBody || ''}
+                WHERE telefone = ${waId}`
+          );
+
+          // Enriquecer dados via Meta Graph API (fire and forget)
+          after(async () => {
+            try {
+              const metaToken = process.env.META_WHATSAPP_TOKEN;
+              if (!metaToken) return;
+              const adRes = await fetch(
+                `https://graph.facebook.com/v21.0/${adId}?fields=name,adset_id,campaign_id,adset{name},campaign{name}&access_token=${metaToken}`
               );
+              if (!adRes.ok) return;
+              const adData = await adRes.json();
+              const adName = adData.name || null;
+              const campaignId = adData.campaign_id || adData.campaign?.id || null;
+              const campaignName = adData.campaign?.name || null;
+              const adsetId = adData.adset_id || adData.adset?.id || null;
+              const adsetName = adData.adset?.name || null;
+              if (adName || campaignId || adsetId) {
+                await waDb.execute(
+                  sql`UPDATE contacts SET
+                    ad_name = COALESCE(${adName}, ad_name),
+                    campaign_id = COALESCE(${campaignId}, campaign_id),
+                    campaign_name = COALESCE(${campaignName}, campaign_name),
+                    adset_id = COALESCE(${adsetId}, adset_id),
+                    adset_name = COALESCE(${adsetName}, adset_name)
+                  WHERE telefone = ${waId} AND ad_id = ${adId}`
+                );
+              }
+            } catch (err) {
+              console.error('[webhook] Erro enriquecer ad:', err);
             }
-          } catch (err) {
-            console.error('Erro ao enriquecer dados do ad:', err);
-          }
-        });
+          });
+        }
+      } catch (contactsErr) {
+        // NÃO bloqueia o fluxo: conversa e mensagem ainda serão salvas
+        console.error('[webhook] Erro ao salvar contacts:', contactsErr);
       }
 
       // Upsert conversa
@@ -338,7 +356,7 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch (err) {
-      console.error('Erro ao processar mensagem:', err);
+      console.error('[webhook] Erro ao processar mensagem:', msg?.from, msg?.id, err instanceof Error ? err.message : err, err instanceof Error ? err.stack : '');
     }
   }
 
