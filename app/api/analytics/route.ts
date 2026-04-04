@@ -2,11 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { sql } from 'drizzle-orm';
 
+// Cache em memória para evitar 13 queries pesadas a cada carregamento.
+// Invalida apos 5 minutos. Chave = "days:statusFilter"
+const analyticsCache = new Map<string, { data: unknown; ts: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const days = Number(searchParams.get('days') || '30');
     const statusFilter = searchParams.get('status') || 'all';
+
+    // Retorna cache se ainda valido
+    const cacheKey = `${days}:${statusFilter}`;
+    const cached = analyticsCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+      return NextResponse.json(cached.data);
+    }
 
     // Use make_interval for safe parameterized interval
     const sinceDate = sql`NOW() - make_interval(days => ${days})`;
@@ -269,7 +281,7 @@ export async function GET(req: NextRequest) {
       sql`SELECT COUNT(*) as c FROM wa_messages WHERE created_at >= ${sinceDate}`
     );
 
-    return NextResponse.json({
+    const result = {
       period: { days, label: days === 7 ? '7 dias' : days === 30 ? '30 dias' : days === 90 ? '90 dias' : `${days}d` },
       summary: {
         totalLeads: totalCount,
@@ -299,7 +311,12 @@ export async function GET(req: NextRequest) {
       bestDay: bestDayData.length > 0 ? DOW_NAMES[Number(bestDayData[0].dow)] : '-',
       bestDayData: (bestDayData || []).map((d) => ({ day: DOW_NAMES[Number(d.dow)], count: Number(d.count) })),
       recentLeads: (recentLeads || []).map((l) => ({ ...l, msg_count: Number(l.msg_count) })),
-    });
+    };
+
+    // Salvar no cache
+    analyticsCache.set(cacheKey, { data: result, ts: Date.now() });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Analytics error:', error);
     return NextResponse.json({ error: 'Failed to fetch analytics', details: String(error) }, { status: 500 });

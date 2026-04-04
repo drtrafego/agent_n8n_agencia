@@ -4,6 +4,11 @@ import { sseEmitter, type SSEEvent } from '@/lib/sse/emitter';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Tempo maximo de conexao SSE (5 minutos).
+// Frontend reconecta automaticamente via useSSE hook (backoff exponencial).
+// Isso evita que a funcao Vercel fique ativa indefinidamente consumindo CPU.
+const SSE_MAX_DURATION_MS = 5 * 60 * 1000;
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ conversationId: string }> }
@@ -45,15 +50,24 @@ export async function GET(
         }
       }, 25000);
 
-      req.signal.addEventListener('abort', () => {
+      // Timeout: encerra a conexao apos SSE_MAX_DURATION_MS.
+      // O frontend reconecta automaticamente (useSSE hook com backoff).
+      const timeout = setTimeout(() => {
+        cleanup();
+      }, SSE_MAX_DURATION_MS);
+
+      const cleanup = () => {
         clearInterval(heartbeat);
+        clearTimeout(timeout);
         sseEmitter.off('event', send);
         try {
           controller.close();
         } catch {
           // Já fechado
         }
-      });
+      };
+
+      req.signal.addEventListener('abort', cleanup);
     },
   });
 
