@@ -19,6 +19,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'phone e body são obrigatórios' }, { status: 400 });
     }
 
+    // Bloquear comandos internos do bot que não devem ser enviados ao lead
+    const blocked = ['STOP', 'PARAR', 'END', 'FINALIZAR'];
+    if (blocked.includes(msgBody.trim().toUpperCase())) {
+      console.warn(`[bot-send] Mensagem bloqueada (comando interno): "${msgBody}" para ${phone}`);
+      return NextResponse.json({ ok: true, blocked: true, reason: 'internal_command' });
+    }
+
     // Normalizar phone (remover + se houver)
     const waId = phone.replace(/^\+/, '');
 

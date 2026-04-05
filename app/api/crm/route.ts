@@ -41,15 +41,16 @@ export async function GET() {
       WHERE nicho IS NULL AND observacoes_sdr IS NOT NULL AND LENGTH(observacoes_sdr) > 10
     `);
 
-    // Leads com 4+ follow-ups sem resposta → sem_interesse
-    // So move leads que ainda estao em stages iniciais (novo, qualificando)
+    // Leads com 6+ follow-ups sem resposta E sem mensagem do lead há 72h → sem_interesse
+    // Regra conservadora: só descarta se realmente não houve nenhuma interação recente
     // Nao toca em leads que ja avancaram (interesse, agendado, realizada, convertido)
     await db.execute(sql`
       UPDATE contacts SET
         stage = 'sem_interesse',
         stage_updated_at = NOW()
-      WHERE followup_count >= 4
+      WHERE followup_count >= 6
         AND stage IN ('novo', 'qualificando')
+        AND (last_lead_msg_at IS NULL OR last_lead_msg_at < NOW() - INTERVAL '72 hours')
     `);
 
     const rows = await db.execute<{
