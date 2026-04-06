@@ -76,6 +76,28 @@ export async function POST(req: NextRequest) {
     .values({ payload: payload as Record<string, unknown>, status: 'processed' })
     .catch(console.error);
 
+  // Forward para CRM externo (fire and forget)
+  // O CRM roteia automaticamente pela tabela meta_integrations (phone_number_id, ig_account_id)
+  const crmWebhookUrl = process.env.CRM_WEBHOOK_URL;
+  const crmForwardToken = process.env.CRM_FORWARD_TOKEN;
+  if (crmWebhookUrl && crmForwardToken) {
+    after(async () => {
+      try {
+        const res = await fetch(crmWebhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-forward-token': crmForwardToken,
+          },
+          body,
+        });
+        console.log(`[CRM Forward] ${res.status}`);
+      } catch (err) {
+        console.error('[CRM Forward] Erro:', err);
+      }
+    });
+  }
+
   const parsed = parseWebhookPayload(payload);
   if (!parsed) return NextResponse.json({ ok: true });
 
