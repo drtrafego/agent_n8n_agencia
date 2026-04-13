@@ -10,6 +10,7 @@ const VALID_STAGES = [
   'realizada',
   'convertido',
   'sem_interesse',
+  'bloqueado',
 ] as const;
 
 export async function GET() {
@@ -41,16 +42,40 @@ export async function GET() {
       WHERE nicho IS NULL AND observacoes_sdr IS NOT NULL AND LENGTH(observacoes_sdr) > 10
     `);
 
-    // Leads com 6+ follow-ups sem resposta E sem mensagem do lead há 72h → sem_interesse
-    // Regra conservadora: só descarta se realmente não houve nenhuma interação recente
-    // Nao toca em leads que ja avancaram (interesse, agendado, realizada, convertido)
+    // Auto-advance: lead respondeu pelo menos 1 vez → sai de 'novo' para 'qualificando'.
+    // Regra objetiva (sem text matching), baseada apenas em last_lead_msg_at,
+    // que so e populado quando o lead realmente envia uma mensagem.
+    await db.execute(sql`
+      UPDATE contacts SET
+        stage = 'qualificando',
+        stage_updated_at = NOW()
+      WHERE stage = 'novo'
+        AND last_lead_msg_at IS NOT NULL
+    `);
+
+    // Ressurreicao: lead descartado voltou a responder DEPOIS de ser marcado como sem_interesse.
+    // Janela de 14 dias para nao reabrir casos antigos demais.
+    await db.execute(sql`
+      UPDATE contacts SET
+        stage = 'qualificando',
+        stage_updated_at = NOW()
+      WHERE stage = 'sem_interesse'
+        AND last_lead_msg_at IS NOT NULL
+        AND last_lead_msg_at > stage_updated_at
+        AND last_lead_msg_at > NOW() - INTERVAL '14 days'
+    `);
+
+    // Leads com 6+ follow-ups sem resposta E sem mensagem do lead há 7 dias → sem_interesse
+    // Janela de 7 dias (antes era 72h) para evitar loop com a regra de ressurreicao:
+    // leads que responderam recentemente nao podem ser re-descartados automaticamente.
+    // Nao toca em leads que ja avancaram (interesse, agendado, realizada, convertido).
     await db.execute(sql`
       UPDATE contacts SET
         stage = 'sem_interesse',
         stage_updated_at = NOW()
       WHERE followup_count >= 6
         AND stage IN ('novo', 'qualificando')
-        AND (last_lead_msg_at IS NULL OR last_lead_msg_at < NOW() - INTERVAL '72 hours')
+        AND (last_lead_msg_at IS NULL OR last_lead_msg_at < NOW() - INTERVAL '7 days')
     `);
 
     const rows = await db.execute<{
@@ -120,7 +145,10 @@ export async function GET() {
         FROM wa_messages m
         WHERE m.conversation_id = conv.id
       ) msg_count ON true
-      ORDER BY c.created_at DESC
+      ORDER BY
+        (c.last_lead_msg_at IS NOT NULL) DESC,
+        COALESCE(c.last_lead_msg_at, conv.last_message_at) DESC NULLS LAST,
+        c.created_at DESC
     `);
 
     // Group by stage

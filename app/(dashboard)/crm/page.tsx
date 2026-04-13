@@ -89,6 +89,7 @@ const STAGES = [
   { key: 'realizada', label: 'Realizada', color: 'bg-emerald-600', badgeBg: 'bg-emerald-900/50', textColor: 'text-emerald-300', borderColor: 'border-emerald-800/50', dotColor: '#10b981' },
   { key: 'convertido', label: 'Convertido', color: 'bg-purple-600', badgeBg: 'bg-purple-900/50', textColor: 'text-purple-300', borderColor: 'border-purple-800/50', dotColor: '#a855f7' },
   { key: 'sem_interesse', label: 'Sem Interesse', color: 'bg-red-600', badgeBg: 'bg-red-900/50', textColor: 'text-red-300', borderColor: 'border-red-800/50', dotColor: '#ef4444' },
+  { key: 'bloqueado', label: 'Bloqueado', color: 'bg-neutral-800', badgeBg: 'bg-neutral-900/70', textColor: 'text-neutral-400', borderColor: 'border-neutral-800/50', dotColor: '#525252' },
 ] as const;
 
 const SOURCE_OPTIONS = [
@@ -104,10 +105,10 @@ const SOURCE_OPTIONS = [
 ];
 
 const SORT_OPTIONS = [
+  { value: 'activity', label: 'Quem respondeu primeiro' },
   { value: 'recent', label: 'Mais recente' },
   { value: 'oldest', label: 'Mais antigo' },
   { value: 'messages', label: 'Mais mensagens' },
-  { value: 'activity', label: 'Ultima atividade' },
 ];
 
 // ─── Source Icon ─────────────────────────────────────────────────────
@@ -721,7 +722,7 @@ export default function CRMPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
-  const [sortBy, setSortBy] = useState('recent');
+  const [sortBy, setSortBy] = useState('activity');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [dragData, setDragData] = useState<{ leadId: number; fromStage: string } | null>(null);
@@ -793,13 +794,19 @@ export default function CRMPage() {
       leads = leads.filter((l) => l.source === sourceFilter);
     }
 
-    // Ordenacao
+    // Ordenacao — em TODOS os modos, leads sem interacao do lead vao pro FIM.
+    // "Sem interacao" = last_lead_msg_at nulo (lead nunca respondeu nada).
+    const hasReplied = (l: Lead) => !!l.last_lead_msg_at;
     leads = [...leads].sort((a, b) => {
+      const aR = hasReplied(a);
+      const bR = hasReplied(b);
+      if (aR !== bR) return aR ? -1 : 1; // quem respondeu primeiro, sempre
+
       if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       if (sortBy === 'messages') return Number(b.message_count) - Number(a.message_count);
       if (sortBy === 'activity') {
-        const aTime = new Date(a.last_message_at || a.created_at).getTime();
-        const bTime = new Date(b.last_message_at || b.created_at).getTime();
+        const aTime = new Date(a.last_lead_msg_at || a.last_message_at || a.created_at).getTime();
+        const bTime = new Date(b.last_lead_msg_at || b.last_message_at || b.created_at).getTime();
         return bTime - aTime;
       }
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
