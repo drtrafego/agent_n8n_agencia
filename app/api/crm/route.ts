@@ -42,15 +42,17 @@ export async function GET() {
       WHERE nicho IS NULL AND observacoes_sdr IS NOT NULL AND LENGTH(observacoes_sdr) > 10
     `);
 
-    // Auto-advance: lead respondeu pelo menos 1 vez → sai de 'novo' para 'qualificando'.
-    // Regra objetiva (sem text matching), baseada apenas em last_lead_msg_at,
-    // que so e populado quando o lead realmente envia uma mensagem.
+    // Auto-advance: lead respondeu APOS o bot ter falado → sai de 'novo' para 'qualificando'.
+    // Regra estrita: clicar no botao do anuncio NAO conta (aquela msg vem antes do bot responder).
+    // Lead so avanca se houve interacao real: bot falou, e lead respondeu depois.
     await db.execute(sql`
       UPDATE contacts SET
         stage = 'qualificando',
         stage_updated_at = NOW()
       WHERE stage = 'novo'
         AND last_lead_msg_at IS NOT NULL
+        AND last_bot_msg_at IS NOT NULL
+        AND last_lead_msg_at > last_bot_msg_at
     `);
 
     // Ressurreicao: lead descartado voltou a responder DEPOIS de ser marcado como sem_interesse.
