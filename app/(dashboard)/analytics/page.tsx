@@ -13,7 +13,7 @@ import { AdsChart } from '@/components/analytics/ads-chart';
 import { LeadsTable } from '@/components/analytics/leads-table';
 import {
   Users, MessageSquare, CalendarCheck, Clock, TrendingUp,
-  Zap, BarChart3, Target, Timer, Globe, DollarSign, Megaphone,
+  Zap, BarChart3, Target, Timer, Globe, DollarSign, Radio,
 } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -268,7 +268,7 @@ export default function AnalyticsPage() {
             <CardHeader className="pb-1">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-zinc-300 flex items-center gap-2">
-                  <Megaphone className="h-4 w-4 text-orange-400" />
+                  <Radio className="h-4 w-4 text-orange-400" />
                   Anuncios Meta Ads
                 </CardTitle>
                 <span className="text-[10px] text-zinc-600">leads por anuncio e campanha</span>

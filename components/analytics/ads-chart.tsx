@@ -66,12 +66,12 @@ export function AdsChart({ data }: { data: AdsData[] }) {
               <Tooltip
                 contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px', fontSize: 11 }}
                 itemStyle={{ color: '#e4e4e7' }}
-                formatter={(v: number, _: string, p) => [v, p.payload.name]}
+                formatter={(v: number) => [v, 'leads']}
                 labelFormatter={() => ''}
               />
-              <Bar dataKey="leads" radius={[0, 4, 4, 0]} maxBarSize={16}>
+              <Bar dataKey="leads" radius={[0, 4, 4, 0] as [number, number, number, number]} maxBarSize={16}>
                 {adRows.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>
