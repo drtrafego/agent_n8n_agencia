@@ -1,0 +1,37 @@
+{
+  "objecoes": {
+    "robo_frio_prefiro_humano": {
+      "gatilho": ["robô", "frio", "humano", "prefiro pessoa", "não gosto de bot", "chatbot ruim", "impessoal"],
+      "resposta_curta": "Essa é a ideia: o agente assume o repetitivo e libera sua equipe pro que precisa de gente de verdade. E olha, você está conversando comigo agora e parece bem natural, não?",
+      "argumento_tecnico": "Diferente dos chatbots antigos com menus fixos, o Agente 24 Horas usa inteligência artificial generativa. Ele entende contexto, adapta o tom da conversa e aprende sobre o seu negócio. Não é fluxo pronto, é conversa real.",
+      "meta_comentario": "Percebeu que eu entendi seu receio sem você precisar explicar duas vezes? É exatamente isso que faço com seus clientes."
+    },
+    "preco_caro": {
+      "gatilho": ["caro", "preço", "valor", "quanto custa", "investimento", "orçamento"],
+      "resposta_curta": "Compare com um funcionário: R$2.500/mês, 8h/dia, folgas, férias e 13º. O agente custa uma fração disso e não desliga nunca.",
+      "ancoragem_valor": "O investimento depende da personalização pro seu nicho. Pra te dar uma referência: estamos com uma condição especial para os primeiros clientes. Na call de 15 minutos eu te mostro o calculo exato do retorno pro seu caso.",
+      "inversao_roi": "Quanto você estima que perde por mês com leads que não recebem resposta rápida? Na maioria dos casos, um único cliente recuperado já paga o investimento.",
+      "regra": "NUNCA dê o preço exato no chat. Sempre conduza para a call onde o comercial apresenta a proposta com demonstração ao vivo."
+    },
+    "dificil_implementar": {
+      "gatilho": ["difícil", "complicado", "demora", "técnico", "integração", "trabalho"],
+      "resposta_curta": "Zero trabalho pra você. Somos done-for-you: treinamos, conectamos e entregamos pronto em até 7 dias úteis. Você só aprova.",
+      "detalhamento": "O processo é simples: 1) Na call entendemos seu negócio. 2) Personalizamos o agente pro seu nicho. 3) Conectamos no seu WhatsApp. 4) Você testa e aprova. Tudo em até 7 dias úteis."
+    },
+    "ia_erra_inventa": {
+      "gatilho": ["erra", "inventa", "alucina", "mentira", "informação errada", "confiável"],
+      "resposta_curta": "O agente tem barreiras de segurança. Só responde o que você aprovou. Se não souber, transfere pro humano automaticamente. Sem invenção.",
+      "detalhamento": "Configuramos uma base de conhecimento exclusiva com as informações do SEU negócio. O agente só fala o que está nessa base. Se receber pergunta fora do escopo, ele diz 'vou verificar com a equipe' e avisa você."
+    },
+    "ja_tenho_solucao": {
+      "gatilho": ["já tenho", "já uso", "outra ferramenta", "concorrente"],
+      "resposta_curta": "Que bom que você já investe nisso! Me conta: como tem sido os resultados? Está satisfeito com a taxa de conversão?",
+      "argumento": "Muitos clientes nossos migraram de chatbots tradicionais porque a diferença entre menu fixo e IA generativa é brutal. Não precisa trocar agora. Que tal testar em paralelo?"
+    },
+    "nao_e_momento": {
+      "gatilho": ["não é momento", "depois", "mais pra frente", "agora não"],
+      "resposta_curta": "Entendo perfeitamente. Só uma reflexão: cada dia sem responder rápido são leads que vão pro concorrente. Quando seria o momento ideal?",
+      "follow_up": "Posso te mandar um material mostrando como funciona na prática. Se fizer sentido depois, é só me chamar."
+    }
+  }
+}

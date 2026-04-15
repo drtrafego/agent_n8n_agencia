@@ -9,10 +9,11 @@ import { StatusChart } from '@/components/analytics/status-chart';
 import { HeatmapChart } from '@/components/analytics/heatmap-chart';
 import { NicheChart } from '@/components/analytics/niche-chart';
 import { SourceChart } from '@/components/analytics/source-chart';
+import { AdsChart } from '@/components/analytics/ads-chart';
 import { LeadsTable } from '@/components/analytics/leads-table';
 import {
-  Users, MessageSquare, CalendarCheck, Clock, TrendingUp, Percent,
-  Zap, BarChart3, Target, Timer, Globe,
+  Users, MessageSquare, CalendarCheck, Clock, TrendingUp,
+  Zap, BarChart3, Target, Timer, Globe, DollarSign, Megaphone,
 } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -24,6 +25,12 @@ function formatTime(seconds: number): string {
   const min = Math.floor(seconds / 60);
   const sec = seconds % 60;
   return sec > 0 ? `${min}m ${sec}s` : `${min}m`;
+}
+
+function formatCost(usd: number): string {
+  if (usd === 0) return 'US$ 0,00';
+  if (usd < 0.01) return `US$ ${usd.toFixed(4)}`;
+  return `US$ ${usd.toFixed(2)}`;
 }
 
 const PERIOD_OPTIONS = [
@@ -77,7 +84,6 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Period selector */}
           <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
             {PERIOD_OPTIONS.map((opt) => (
               <button
@@ -97,9 +103,9 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-[100px]" />)
+          Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[100px]" />)
         ) : (
           <>
             <MetricCard
@@ -107,7 +113,7 @@ export default function AnalyticsPage() {
               value={s?.totalLeads || 0}
               icon={Users}
               trend={trends?.leads}
-              subtitle={`vs periodo anterior`}
+              subtitle="vs periodo anterior"
               color="text-indigo-400"
             />
             <MetricCard
@@ -138,6 +144,13 @@ export default function AnalyticsPage() {
               icon={MessageSquare}
               subtitle={`${s?.responseRate || 0}% taxa resposta`}
               color="text-blue-400"
+            />
+            <MetricCard
+              title="Custo IA"
+              value={formatCost(s?.estimatedCostUsd || 0)}
+              icon={DollarSign}
+              subtitle={s?.costPerLead ? `US$ ${s.costPerLead}/lead` : `${s?.aiExecutions || 0} execucoes`}
+              color="text-rose-400"
             />
           </>
         )}
@@ -246,6 +259,28 @@ export default function AnalyticsPage() {
         )}
       </div>
 
+      {/* Row 3: Anuncios Meta Ads */}
+      <div className="grid grid-cols-1 gap-4">
+        {isLoading ? (
+          <Skeleton className="h-[320px]" />
+        ) : (
+          <Card className="bg-zinc-900/80 border-zinc-800">
+            <CardHeader className="pb-1">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+                  <Megaphone className="h-4 w-4 text-orange-400" />
+                  Anuncios Meta Ads
+                </CardTitle>
+                <span className="text-[10px] text-zinc-600">leads por anuncio e campanha</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <AdsChart data={data?.adsBreakdown || []} />
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Leads Table */}
       <Card className="bg-zinc-900/80 border-zinc-800">
         <CardHeader className="pb-2">
@@ -254,7 +289,6 @@ export default function AnalyticsPage() {
               <Users className="h-4 w-4 text-indigo-400" />
               Leads ({data?.recentLeads?.length || 0})
             </CardTitle>
-            {/* Status filter */}
             <div className="flex items-center bg-zinc-800 rounded-lg p-0.5">
               {STATUS_OPTIONS.map((opt) => (
                 <button

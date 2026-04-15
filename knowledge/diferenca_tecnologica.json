@@ -1,0 +1,55 @@
+{
+  "diferenca_tecnologica": {
+    "titulo": "Por que o Agente 24 Horas é diferente de um chatbot comum",
+    "comparacao": {
+      "chatbot_antigo": {
+        "nome": "Chatbot Tradicional (fluxo fixo)",
+        "como_funciona": "Menu com opções numeradas (digite 1 para vendas, 2 para suporte). Respostas pré-programadas. Se o cliente falar algo fora do menu, trava.",
+        "limitacoes": [
+          "Não entende contexto da conversa",
+          "Não se adapta ao tom do cliente",
+          "Respostas robóticas e repetitivas",
+          "Precisa de programador para cada mudança",
+          "Frustra o cliente quando não encontra a opção certa"
+        ],
+        "percepcao_cliente": "Irritante, frio, impessoal. O cliente sabe que é robô e fica frustrado."
+      },
+      "whatsapp_business_ai": {
+        "nome": "WhatsApp Business AI (Meta, gratuito)",
+        "como_funciona": "IA nativa do WhatsApp que responde perguntas básicas usando informações do catálogo de produtos.",
+        "limitacoes": [
+          "Só funciona com catálogo do WhatsApp Business",
+          "Não qualifica leads",
+          "Não agenda reuniões",
+          "Não faz follow-up",
+          "Não integra com CRM",
+          "Sem personalização avançada",
+          "Sem suporte ou otimização"
+        ],
+        "percepcao_cliente": "Útil para perguntas simples, mas não substitui atendimento real."
+      },
+      "agente_24_horas": {
+        "nome": "Agente 24 Horas (IA Generativa Autônoma)",
+        "como_funciona": "Inteligência artificial generativa treinada especificamente com as informações do negócio do cliente. Entende contexto, adapta tom, qualifica, agenda e faz follow-up. Conversa naturalmente como um vendedor experiente.",
+        "diferenciais": [
+          "Entende linguagem natural (não precisa de menu)",
+          "Se adapta ao tom do cliente (formal, informal, emojis)",
+          "Qualifica leads automaticamente (identifica quem tem perfil real)",
+          "Agenda reuniões direto na agenda do empresário",
+          "Faz follow-up inteligente (na hora certa, com conteúdo relevante)",
+          "Integra com CRM (registra tudo automaticamente)",
+          "Treinado com informações exclusivas do negócio",
+          "Transfere para humano quando necessário",
+          "Barreiras de segurança: não inventa informações",
+          "Suporte e otimização contínua inclusos"
+        ],
+        "percepcao_cliente": "Natural, rápido, eficiente. Muitos leads não percebem que é IA até serem informados."
+      }
+    },
+    "frases_para_usar": {
+      "quando_comparam_com_chatbot": "Chatbot antigo é menu com número. 'Digite 1 para vendas.' Frustrante, né? O Agente 24 Horas entende o que você fala e responde como um vendedor experiente. Percebeu a diferença agora na nossa conversa?",
+      "quando_comparam_com_whatsapp_ai": "A IA do WhatsApp responde perguntas do catálogo. Legal, mas não qualifica lead, não agenda, não faz follow-up e não integra com nada. É como comparar uma calculadora com um contador.",
+      "quando_duvidam_que_funciona": "Olha o que acabou de acontecer: você me contou seu desafio, eu entendi na hora e já te propus a solução. Sem menu, sem 'digite 1'. Isso é IA generativa funcionando ao vivo."
+    }
+  }
+}

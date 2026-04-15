@@ -1,0 +1,548 @@
+{
+  "updatedAt": "2026-04-15T01:08:53.680Z",
+  "createdAt": "2026-03-27T21:09:52.671Z",
+  "id": "aBMaCWPodLaS8I6L",
+  "name": "follow_up_agent_n8n_agencia_br",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/30 * * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        304
+      ],
+      "id": "re-cron",
+      "name": "Trigger 30min"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reengagement-test-run",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        64
+      ],
+      "id": "re-wh",
+      "name": "Webhook Teste",
+      "webhookId": "re-wh-001",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH eligible AS (\n  SELECT c.id AS crm_contact_id, c.telefone AS phone,\n    SPLIT_PART(SPLIT_PART(COALESCE(c.nome,''), '|', 1), ' ', 1) AS nome,\n    c.stage,\n    COALESCE(c.followup_count, 0) AS followup_count,\n    COALESCE(c.observacoes_sdr, '') AS obs,\n    COALESCE(c.nicho, '') AS nicho\n  FROM contacts c\n  JOIN wa_contacts wac ON wac.wa_id = c.telefone\n  JOIN wa_conversations wc ON wc.contact_id = wac.id\n  WHERE wc.bot_active = true AND wc.status = 'open'\n    AND c.stage NOT IN ('agendado','agendou','fechou','perdido','sem_interesse','realizada')\n    AND c.last_bot_msg_at IS NOT NULL\n    AND (c.last_lead_msg_at IS NULL OR c.last_lead_msg_at < c.last_bot_msg_at)\n    AND (\n      (c.last_lead_msg_at IS NULL AND (\n        (COALESCE(c.followup_count,0) = 0\n          AND c.last_bot_msg_at < NOW() - INTERVAL '1 hour'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '4 hours')\n        OR (COALESCE(c.followup_count,0) = 1\n          AND c.last_bot_msg_at < NOW() - INTERVAL '4 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '12 hours')\n      ))\n      OR\n      (c.last_lead_msg_at IS NOT NULL AND (\n        (COALESCE(c.followup_count,0) = 0\n          AND c.last_bot_msg_at < NOW() - INTERVAL '1 hour'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '4 hours')\n        OR (COALESCE(c.followup_count,0) = 1\n          AND c.last_bot_msg_at < NOW() - INTERVAL '4 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '12 hours')\n        OR (COALESCE(c.followup_count,0) = 2\n          AND c.last_bot_msg_at < NOW() - INTERVAL '12 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '24 hours')\n        OR (COALESCE(c.followup_count,0) = 3\n          AND c.last_bot_msg_at < NOW() - INTERVAL '24 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '48 hours')\n        OR (COALESCE(c.followup_count,0) = 4\n          AND c.last_bot_msg_at < NOW() - INTERVAL '48 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '60 hours')\n        OR (COALESCE(c.followup_count,0) = 5\n          AND c.last_bot_msg_at < NOW() - INTERVAL '60 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '72 hours')\n      ))\n    )\n  LIMIT 20\n),\nreagend AS (\n  SELECT c.id AS crm_contact_id, c.telefone AS phone,\n    SPLIT_PART(SPLIT_PART(COALESCE(c.nome,''), '|', 1), ' ', 1) AS nome,\n    c.stage,\n    99 AS followup_count,\n    COALESCE(c.observacoes_sdr, '') AS obs,\n    COALESCE(c.nicho, '') AS nicho\n  FROM contacts c\n  JOIN wa_contacts wac ON wac.wa_id = c.telefone\n  JOIN wa_conversations wc ON wc.contact_id = wac.id\n  WHERE c.stage = 'agendado'\n    AND c.scheduled_at IS NOT NULL\n    AND c.scheduled_at < NOW() - INTERVAL '24 hours'\n    AND wc.bot_active = true AND wc.status = 'open'\n    AND (c.last_lead_msg_at IS NULL OR c.last_lead_msg_at < c.last_bot_msg_at)\n  LIMIT 10\n),\ninteresse AS (\n  SELECT c.id AS crm_contact_id, c.telefone AS phone,\n    SPLIT_PART(SPLIT_PART(COALESCE(c.nome,''), '|', 1), ' ', 1) AS nome,\n    c.stage,\n    88 AS followup_count,\n    COALESCE(c.observacoes_sdr, '') AS obs,\n    COALESCE(c.nicho, '') AS nicho\n  FROM contacts c\n  JOIN wa_contacts wac ON wac.wa_id = c.telefone\n  JOIN wa_conversations wc ON wc.contact_id = wac.id\n  WHERE c.stage = 'interesse'\n    AND c.scheduled_at IS NULL\n    AND wc.bot_active = true AND wc.status = 'open'\n    AND (c.last_lead_msg_at IS NULL OR c.last_lead_msg_at < c.last_bot_msg_at)\n    AND c.last_bot_msg_at < NOW() - INTERVAL '2 hours'\n    AND c.last_bot_msg_at > NOW() - INTERVAL '48 hours'\n  LIMIT 5\n)\nSELECT crm_contact_id, phone, followup_count,\n  CASE\n    -- INTERESSE SEM AGENDAR: lead disse que quer, mas sumiu antes de confirmar horário\n    WHEN followup_count = 88 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', ficamos de fechar um horário pra você ver o agente rodando no seu tipo de negócio de ' || TRIM(nicho) || E'. Ainda está na sua lista? Me fala quando fica bom essa semana.'\n    WHEN followup_count = 88 THEN\n      TRIM(nome) || E', ficamos de fechar um horário com o Gastão. Ainda está no radar? Me manda quando fica bom essa semana que eu já separo o espaço.'\n\n    -- FOLLOW-UP 0: CHECK-IN LEVE (1h)\n    WHEN followup_count = 0 AND LENGTH(nicho) > 0 THEN\n      'E aí ' || TRIM(nome) || E', me conta rapidinho: ficou claro como o agente encaixaria no seu trabalho de ' || TRIM(nicho) || E'? Se tiver alguma dúvida, é só mandar.'\n    WHEN followup_count = 0 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', pela nossa conversa me pareceu que isso faz sentido pro que voce me contou. Faltou alguma coisa do meu lado?'\n    WHEN followup_count = 0 THEN\n      TRIM(nome) || E', só pra garantir que não ficou nada perdido aqui: ainda tá de pé a ideia de olhar como um agente de IA encaixaria no seu negócio?'\n\n    -- FOLLOW-UP 1: INSIGHT (4h)\n    WHEN followup_count = 1 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', pensei aqui. A maioria dos negócios de ' || TRIM(nicho) || E' que a gente atendeu tinha o mesmo gargalo: lead que chega e some antes de alguém responder. Quer que eu te mostre como resolvemos isso?'\n    WHEN followup_count = 1 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', voltei aqui com uma ideia pro caso que você me descreveu. Em 30 minutos consigo te mostrar como ficaria no seu fluxo. Vale?'\n    WHEN followup_count = 1 THEN\n      TRIM(nome) || E', sem pressão: queria te mostrar uma coisa rápida, como o agente qualifica o lead sozinho antes de chegar na sua equipe. Tem 30 min essa semana?'\n\n    -- FOLLOW-UP 2: MINI CASE (12h)\n    WHEN followup_count = 2 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', lembrei de um caso de ' || TRIM(nicho) || E' que a gente atendeu recentemente. O dono perdia vários agendamentos por semana porque ninguém respondia fora do horário. Com o agente, zero perda nesses casos. Vale comparar com o seu?'\n    WHEN followup_count = 2 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', um cliente nosso tinha exatamente o mesmo desafio que você comentou. Em uma semana o agente já estava fazendo o trabalho chato sozinho. Posso te contar como foi em 30 min?'\n    WHEN followup_count = 2 THEN\n      TRIM(nome) || E', um cliente nosso estava perdendo leads porque demorava pra responder. Colocamos o agente e em 7 dias ele já estava agendando reunião no automático. Vale conhecer como funcionou?'\n\n    -- FOLLOW-UP 3: CALL DIRETA (24h)\n    WHEN followup_count = 3 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', quer separar 30 min pra eu te mostrar o agente funcionando ao vivo pro tipo de negócio de ' || TRIM(nicho) || E'? Amanhã de manhã ou depois à tarde?'\n    WHEN followup_count = 3 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', tenho 30 min pra te mostrar como o agente resolveria o que você me contou. Amanhã de manhã ou depois à tarde?'\n    WHEN followup_count = 3 THEN\n      TRIM(nome) || E', que tal separar 30 min pra eu te mostrar o agente ao vivo? Amanhã de manhã ou depois à tarde?'\n\n    -- FOLLOW-UP 4: HONESTO (48h)\n    WHEN followup_count = 4 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', acho que não deu match aqui e não vou insistir. Uma última coisa: se no futuro você achar que vale olhar como um agente encaixa em ' || TRIM(nicho) || E', dá um oi. Estarei por aqui.'\n    WHEN followup_count = 4 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', percebi que você sumiu e não vou insistir mais. Se mudar de ideia e quiser retomar a conversa, é só chamar.'\n    WHEN followup_count = 4 THEN\n      TRIM(nome) || E', vou parar por aqui pra não te incomodar. Se no futuro quiser olhar como um agente de IA resolveria o atendimento aí, é só chamar.'\n\n    -- FOLLOW-UP 5: DESPEDIDA (60h)\n    WHEN followup_count = 5 THEN\n      TRIM(nome) || E', última mensagem minha por aqui. Desejo sucesso no que você tá tocando. Se precisar de um agente no futuro, você já sabe onde me achar.'\n\n    -- REAGENDAMENTO (apos scheduled_at + 24h)\n    WHEN followup_count = 99 THEN\n      TRIM(nome) || E', vi que a gente tinha um horário marcado mas não conseguiu rolar. Sem stress, acontece. Quer remarcar pra essa semana ou a próxima?'\n\n    ELSE\n      TRIM(nome) || E', tudo bem por aí? Só queria saber se ficou alguma dúvida sobre o agente. Estou por aqui.'\n  END AS body\nFROM (\n  SELECT * FROM interesse\n  UNION ALL\n  SELECT * FROM eligible\n  UNION ALL\n  SELECT * FROM reagend\n) leads",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        128,
+        192
+      ],
+      "id": "re-q",
+      "name": "Buscar Leads",
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "qjAlzv5GyfH3869u",
+          "name": "Postgres agent-n8n-agencia"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://agente.casaldotrafego.com/api/whatsapp/bot-send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({phone: $json.phone, body: $json.body}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        192
+      ],
+      "id": "re-send",
+      "name": "Enviar Msg",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        192
+      ],
+      "id": "re-wait",
+      "name": "Esperar 3s",
+      "webhookId": "8b0c75a7-d1df-4f0b-abf5-a5bb4750064b"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE contacts\nSET followup_count = CASE\n      WHEN {{ $('Buscar Leads').item.json.followup_count || 0 }} = 99 THEN 100\n      ELSE COALESCE(followup_count, 0) + 1\n    END,\n    last_bot_msg_at = NOW(),\n    stage = CASE\n      WHEN {{ $('Buscar Leads').item.json.followup_count || 0 }} = 99 THEN stage\n      WHEN last_lead_msg_at IS NULL AND COALESCE(followup_count, 0) + 1 >= 2 THEN 'sem_interesse'\n      WHEN COALESCE(followup_count, 0) + 1 >= 6 THEN 'sem_interesse'\n      ELSE stage\n    END\nWHERE id = {{ $('Buscar Leads').item.json.crm_contact_id || -1 }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        960,
+        192
+      ],
+      "id": "re-upd",
+      "name": "Marcar Followup",
+      "credentials": {
+        "postgres": {
+          "id": "qjAlzv5GyfH3869u",
+          "name": "Postgres agent-n8n-agencia"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        192
+      ],
+      "id": "re-end",
+      "name": "Concluido"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-phone-check",
+              "leftValue": "={{ $json.phone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-tem-lead",
+      "name": "Tem Lead?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        350,
+        192
+      ]
+    }
+  ],
+  "connections": {
+    "Trigger 30min": {
+      "main": [
+        [
+          {
+            "node": "Buscar Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Teste": {
+      "main": [
+        [
+          {
+            "node": "Buscar Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Leads": {
+      "main": [
+        [
+          {
+            "node": "Tem Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Msg": {
+      "main": [
+        [
+          {
+            "node": "Esperar 3s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar 3s": {
+      "main": [
+        [
+          {
+            "node": "Marcar Followup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Followup": {
+      "main": [
+        [
+          {
+            "node": "Concluido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Lead?": {
+      "main": [
+        [
+          {
+            "node": "Enviar Msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Trigger 10h BRT": {
+      "recurrenceRules": []
+    },
+    "node:Trigger 30min": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "d70c8b0e-b653-4550-8f58-65e2dd0dc833",
+  "activeVersionId": "d70c8b0e-b653-4550-8f58-65e2dd0dc833",
+  "versionCounter": 152,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-27T21:09:52.671Z",
+      "createdAt": "2026-03-27T21:09:52.671Z",
+      "role": "workflow:owner",
+      "workflowId": "aBMaCWPodLaS8I6L",
+      "projectId": "zOhXEDtus09yEDuf",
+      "project": {
+        "updatedAt": "2026-03-09T14:28:34.136Z",
+        "createdAt": "2026-03-09T14:27:16.061Z",
+        "id": "zOhXEDtus09yEDuf",
+        "name": "GASTAO Matos <dr.trafego@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ea43f025-b384-4503-86c8-baa14ce3478e"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-15T01:08:53.682Z",
+    "createdAt": "2026-04-15T01:08:53.682Z",
+    "versionId": "d70c8b0e-b653-4550-8f58-65e2dd0dc833",
+    "workflowId": "aBMaCWPodLaS8I6L",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "*/30 * * * *"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          -208,
+          304
+        ],
+        "id": "re-cron",
+        "name": "Trigger 30min"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "reengagement-test-run",
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -208,
+          64
+        ],
+        "id": "re-wh",
+        "name": "Webhook Teste",
+        "webhookId": "re-wh-001",
+        "disabled": true
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "WITH eligible AS (\n  SELECT c.id AS crm_contact_id, c.telefone AS phone,\n    SPLIT_PART(SPLIT_PART(COALESCE(c.nome,''), '|', 1), ' ', 1) AS nome,\n    c.stage,\n    COALESCE(c.followup_count, 0) AS followup_count,\n    COALESCE(c.observacoes_sdr, '') AS obs,\n    COALESCE(c.nicho, '') AS nicho\n  FROM contacts c\n  JOIN wa_contacts wac ON wac.wa_id = c.telefone\n  JOIN wa_conversations wc ON wc.contact_id = wac.id\n  WHERE wc.bot_active = true AND wc.status = 'open'\n    AND c.stage NOT IN ('agendado','agendou','fechou','perdido','sem_interesse','realizada')\n    AND c.last_bot_msg_at IS NOT NULL\n    AND (c.last_lead_msg_at IS NULL OR c.last_lead_msg_at < c.last_bot_msg_at)\n    AND (\n      (c.last_lead_msg_at IS NULL AND (\n        (COALESCE(c.followup_count,0) = 0\n          AND c.last_bot_msg_at < NOW() - INTERVAL '1 hour'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '4 hours')\n        OR (COALESCE(c.followup_count,0) = 1\n          AND c.last_bot_msg_at < NOW() - INTERVAL '4 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '12 hours')\n      ))\n      OR\n      (c.last_lead_msg_at IS NOT NULL AND (\n        (COALESCE(c.followup_count,0) = 0\n          AND c.last_bot_msg_at < NOW() - INTERVAL '1 hour'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '4 hours')\n        OR (COALESCE(c.followup_count,0) = 1\n          AND c.last_bot_msg_at < NOW() - INTERVAL '4 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '12 hours')\n        OR (COALESCE(c.followup_count,0) = 2\n          AND c.last_bot_msg_at < NOW() - INTERVAL '12 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '24 hours')\n        OR (COALESCE(c.followup_count,0) = 3\n          AND c.last_bot_msg_at < NOW() - INTERVAL '24 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '48 hours')\n        OR (COALESCE(c.followup_count,0) = 4\n          AND c.last_bot_msg_at < NOW() - INTERVAL '48 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '60 hours')\n        OR (COALESCE(c.followup_count,0) = 5\n          AND c.last_bot_msg_at < NOW() - INTERVAL '60 hours'\n          AND c.last_bot_msg_at > NOW() - INTERVAL '72 hours')\n      ))\n    )\n  LIMIT 20\n),\nreagend AS (\n  SELECT c.id AS crm_contact_id, c.telefone AS phone,\n    SPLIT_PART(SPLIT_PART(COALESCE(c.nome,''), '|', 1), ' ', 1) AS nome,\n    c.stage,\n    99 AS followup_count,\n    COALESCE(c.observacoes_sdr, '') AS obs,\n    COALESCE(c.nicho, '') AS nicho\n  FROM contacts c\n  JOIN wa_contacts wac ON wac.wa_id = c.telefone\n  JOIN wa_conversations wc ON wc.contact_id = wac.id\n  WHERE c.stage = 'agendado'\n    AND c.scheduled_at IS NOT NULL\n    AND c.scheduled_at < NOW() - INTERVAL '24 hours'\n    AND wc.bot_active = true AND wc.status = 'open'\n    AND (c.last_lead_msg_at IS NULL OR c.last_lead_msg_at < c.last_bot_msg_at)\n  LIMIT 10\n),\ninteresse AS (\n  SELECT c.id AS crm_contact_id, c.telefone AS phone,\n    SPLIT_PART(SPLIT_PART(COALESCE(c.nome,''), '|', 1), ' ', 1) AS nome,\n    c.stage,\n    88 AS followup_count,\n    COALESCE(c.observacoes_sdr, '') AS obs,\n    COALESCE(c.nicho, '') AS nicho\n  FROM contacts c\n  JOIN wa_contacts wac ON wac.wa_id = c.telefone\n  JOIN wa_conversations wc ON wc.contact_id = wac.id\n  WHERE c.stage = 'interesse'\n    AND c.scheduled_at IS NULL\n    AND wc.bot_active = true AND wc.status = 'open'\n    AND (c.last_lead_msg_at IS NULL OR c.last_lead_msg_at < c.last_bot_msg_at)\n    AND c.last_bot_msg_at < NOW() - INTERVAL '2 hours'\n    AND c.last_bot_msg_at > NOW() - INTERVAL '48 hours'\n  LIMIT 5\n)\nSELECT crm_contact_id, phone, followup_count,\n  CASE\n    -- INTERESSE SEM AGENDAR: lead disse que quer, mas sumiu antes de confirmar horário\n    WHEN followup_count = 88 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', ficamos de fechar um horário pra você ver o agente rodando no seu tipo de negócio de ' || TRIM(nicho) || E'. Ainda está na sua lista? Me fala quando fica bom essa semana.'\n    WHEN followup_count = 88 THEN\n      TRIM(nome) || E', ficamos de fechar um horário com o Gastão. Ainda está no radar? Me manda quando fica bom essa semana que eu já separo o espaço.'\n\n    -- FOLLOW-UP 0: CHECK-IN LEVE (1h)\n    WHEN followup_count = 0 AND LENGTH(nicho) > 0 THEN\n      'E aí ' || TRIM(nome) || E', me conta rapidinho: ficou claro como o agente encaixaria no seu trabalho de ' || TRIM(nicho) || E'? Se tiver alguma dúvida, é só mandar.'\n    WHEN followup_count = 0 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', pela nossa conversa me pareceu que isso faz sentido pro que voce me contou. Faltou alguma coisa do meu lado?'\n    WHEN followup_count = 0 THEN\n      TRIM(nome) || E', só pra garantir que não ficou nada perdido aqui: ainda tá de pé a ideia de olhar como um agente de IA encaixaria no seu negócio?'\n\n    -- FOLLOW-UP 1: INSIGHT (4h)\n    WHEN followup_count = 1 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', pensei aqui. A maioria dos negócios de ' || TRIM(nicho) || E' que a gente atendeu tinha o mesmo gargalo: lead que chega e some antes de alguém responder. Quer que eu te mostre como resolvemos isso?'\n    WHEN followup_count = 1 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', voltei aqui com uma ideia pro caso que você me descreveu. Em 30 minutos consigo te mostrar como ficaria no seu fluxo. Vale?'\n    WHEN followup_count = 1 THEN\n      TRIM(nome) || E', sem pressão: queria te mostrar uma coisa rápida, como o agente qualifica o lead sozinho antes de chegar na sua equipe. Tem 30 min essa semana?'\n\n    -- FOLLOW-UP 2: MINI CASE (12h)\n    WHEN followup_count = 2 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', lembrei de um caso de ' || TRIM(nicho) || E' que a gente atendeu recentemente. O dono perdia vários agendamentos por semana porque ninguém respondia fora do horário. Com o agente, zero perda nesses casos. Vale comparar com o seu?'\n    WHEN followup_count = 2 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', um cliente nosso tinha exatamente o mesmo desafio que você comentou. Em uma semana o agente já estava fazendo o trabalho chato sozinho. Posso te contar como foi em 30 min?'\n    WHEN followup_count = 2 THEN\n      TRIM(nome) || E', um cliente nosso estava perdendo leads porque demorava pra responder. Colocamos o agente e em 7 dias ele já estava agendando reunião no automático. Vale conhecer como funcionou?'\n\n    -- FOLLOW-UP 3: CALL DIRETA (24h)\n    WHEN followup_count = 3 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', quer separar 30 min pra eu te mostrar o agente funcionando ao vivo pro tipo de negócio de ' || TRIM(nicho) || E'? Amanhã de manhã ou depois à tarde?'\n    WHEN followup_count = 3 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', tenho 30 min pra te mostrar como o agente resolveria o que você me contou. Amanhã de manhã ou depois à tarde?'\n    WHEN followup_count = 3 THEN\n      TRIM(nome) || E', que tal separar 30 min pra eu te mostrar o agente ao vivo? Amanhã de manhã ou depois à tarde?'\n\n    -- FOLLOW-UP 4: HONESTO (48h)\n    WHEN followup_count = 4 AND LENGTH(nicho) > 0 THEN\n      TRIM(nome) || E', acho que não deu match aqui e não vou insistir. Uma última coisa: se no futuro você achar que vale olhar como um agente encaixa em ' || TRIM(nicho) || E', dá um oi. Estarei por aqui.'\n    WHEN followup_count = 4 AND LENGTH(obs) >= 150 THEN\n      TRIM(nome) || E', percebi que você sumiu e não vou insistir mais. Se mudar de ideia e quiser retomar a conversa, é só chamar.'\n    WHEN followup_count = 4 THEN\n      TRIM(nome) || E', vou parar por aqui pra não te incomodar. Se no futuro quiser olhar como um agente de IA resolveria o atendimento aí, é só chamar.'\n\n    -- FOLLOW-UP 5: DESPEDIDA (60h)\n    WHEN followup_count = 5 THEN\n      TRIM(nome) || E', última mensagem minha por aqui. Desejo sucesso no que você tá tocando. Se precisar de um agente no futuro, você já sabe onde me achar.'\n\n    -- REAGENDAMENTO (apos scheduled_at + 24h)\n    WHEN followup_count = 99 THEN\n      TRIM(nome) || E', vi que a gente tinha um horário marcado mas não conseguiu rolar. Sem stress, acontece. Quer remarcar pra essa semana ou a próxima?'\n\n    ELSE\n      TRIM(nome) || E', tudo bem por aí? Só queria saber se ficou alguma dúvida sobre o agente. Estou por aqui.'\n  END AS body\nFROM (\n  SELECT * FROM interesse\n  UNION ALL\n  SELECT * FROM eligible\n  UNION ALL\n  SELECT * FROM reagend\n) leads",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          128,
+          192
+        ],
+        "id": "re-q",
+        "name": "Buscar Leads",
+        "alwaysOutputData": false,
+        "credentials": {
+          "postgres": {
+            "id": "qjAlzv5GyfH3869u",
+            "name": "Postgres agent-n8n-agencia"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://agente.casaldotrafego.com/api/whatsapp/bot-send",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({phone: $json.phone, body: $json.body}) }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          448,
+          192
+        ],
+        "id": "re-send",
+        "name": "Enviar Msg",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "amount": 3
+        },
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          704,
+          192
+        ],
+        "id": "re-wait",
+        "name": "Esperar 3s",
+        "webhookId": "8b0c75a7-d1df-4f0b-abf5-a5bb4750064b"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE contacts\nSET followup_count = CASE\n      WHEN {{ $('Buscar Leads').item.json.followup_count || 0 }} = 99 THEN 100\n      ELSE COALESCE(followup_count, 0) + 1\n    END,\n    last_bot_msg_at = NOW(),\n    stage = CASE\n      WHEN {{ $('Buscar Leads').item.json.followup_count || 0 }} = 99 THEN stage\n      WHEN last_lead_msg_at IS NULL AND COALESCE(followup_count, 0) + 1 >= 2 THEN 'sem_interesse'\n      WHEN COALESCE(followup_count, 0) + 1 >= 6 THEN 'sem_interesse'\n      ELSE stage\n    END\nWHERE id = {{ $('Buscar Leads').item.json.crm_contact_id || -1 }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          960,
+          192
+        ],
+        "id": "re-upd",
+        "name": "Marcar Followup",
+        "credentials": {
+          "postgres": {
+            "id": "qjAlzv5GyfH3869u",
+            "name": "Postgres agent-n8n-agencia"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          1232,
+          192
+        ],
+        "id": "re-end",
+        "name": "Concluido"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "has-phone-check",
+                "leftValue": "={{ $json.phone }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "filter-tem-lead",
+        "name": "Tem Lead?",
+        "type": "n8n-nodes-base.filter",
+        "typeVersion": 2.2,
+        "position": [
+          350,
+          192
+        ]
+      }
+    ],
+    "connections": {
+      "Trigger 30min": {
+        "main": [
+          [
+            {
+              "node": "Buscar Leads",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook Teste": {
+        "main": [
+          [
+            {
+              "node": "Buscar Leads",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar Leads": {
+        "main": [
+          [
+            {
+              "node": "Tem Lead?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar Msg": {
+        "main": [
+          [
+            {
+              "node": "Esperar 3s",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Esperar 3s": {
+        "main": [
+          [
+            {
+              "node": "Marcar Followup",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Marcar Followup": {
+        "main": [
+          [
+            {
+              "node": "Concluido",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tem Lead?": {
+        "main": [
+          [
+            {
+              "node": "Enviar Msg",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "GASTAO Matos",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-15T01:08:53.916Z",
+        "id": 1687,
+        "workflowId": "aBMaCWPodLaS8I6L",
+        "versionId": "d70c8b0e-b653-4550-8f58-65e2dd0dc833",
+        "event": "activated",
+        "userId": "ea43f025-b384-4503-86c8-baa14ce3478e"
+      }
+    ]
+  }
+}

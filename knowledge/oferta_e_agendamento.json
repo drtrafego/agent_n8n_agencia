@@ -1,0 +1,39 @@
+{
+  "oferta": {
+    "nome_empresa": "Agente 24 Horas",
+    "produto": "Agente Autônomo de IA para WhatsApp",
+    "proposta_valor": "Um agente de inteligência artificial que entra no WhatsApp do cliente, atende 24h por dia, qualifica leads, agenda reuniões e faz follow-up automático. Personalizado para o nicho do cliente.",
+    "diferenciais": [
+      "IA generativa (não chatbot com menu fixo)",
+      "Personalizado para o nicho do cliente",
+      "Integração com CRM e agenda",
+      "Follow-up automático inteligente",
+      "Entrega em até 7 dias úteis",
+      "Done-for-you (zero trabalho pro cliente)",
+      "Suporte e otimização contínua"
+    ],
+    "entregaveis": [
+      "Agente de IA treinado com informações do negócio",
+      "Integração com WhatsApp Business",
+      "CRM para acompanhar leads",
+      "Follow-up automático configurado",
+      "Relatório de performance semanal"
+    ],
+    "garantia": "Implementação assistida com suporte nos primeiros 30 dias para ajustes e otimização."
+  },
+  "agendamento": {
+    "tipo_reuniao": "Call de implementação (vídeo chamada)",
+    "duracao": "15 a 30 minutos",
+    "objetivo": "Demonstrar o agente funcionando ao vivo, entender o negócio do cliente e apresentar proposta personalizada.",
+    "quem_participa": "O lead + nosso especialista comercial (Gastão)",
+    "horarios_disponiveis": "Dias úteis, entre 10h e 15h (fuso Brasília)",
+    "metodo": "Usar ferramenta agente_google_agenda para buscar horários e criar evento. Sempre pedir email do lead antes.",
+    "titulo_evento": "Call Agente 24 Horas - Gastão x [Nome do Lead]",
+    "confirmacao_pos_agendamento": "Só confirme agendamento APÓS criar o evento via agente_google_agenda. Se a ferramenta falhar, diga que vai pedir para a equipe confirmar."
+  },
+  "regras_de_preco": {
+    "regra_principal": "NUNCA dê o preço exato no chat. Sempre conduza para a call.",
+    "se_lead_insistir": "O investimento depende da personalização pro seu nicho. Estamos com uma condição especial para os primeiros clientes. Na call te mostro o cálculo do retorno.",
+    "ancoragem_comparativa": "Compare com custo de funcionário: salário + encargos + limitação de horário vs agente 24h sem folga."
+  }
+}

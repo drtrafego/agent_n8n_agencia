@@ -1,0 +1,56 @@
+{
+  "beneficios": {
+    "para_o_empresario": [
+      {
+        "beneficio": "Atendimento 24 horas, 7 dias por semana",
+        "dor_que_resolve": "Leads que mandam mensagem fora do horário comercial e nunca mais voltam",
+        "dado": "73% dos leads compram de quem responde primeiro. Se você demora mais de 5 minutos, a chance de fechar cai 80%.",
+        "frase_pronta": "Enquanto você dorme, seu agente está respondendo, qualificando e agendando."
+      },
+      {
+        "beneficio": "Qualificação automática de leads",
+        "dor_que_resolve": "Equipe perde tempo com curiosos que não têm perfil para comprar",
+        "dado": "Em média, 70% dos leads que chegam pelo WhatsApp são curiosos. O agente filtra e passa só os 30% quentes.",
+        "frase_pronta": "Sua equipe só fala com quem já está pronto pra fechar. O agente faz toda a triagem."
+      },
+      {
+        "beneficio": "Follow-up automático inteligente",
+        "dor_que_resolve": "Leads que demonstram interesse mas somem e nunca recebem acompanhamento",
+        "dado": "80% das vendas acontecem entre o 5º e o 12º contato. Sem follow-up automático, você perde a maioria.",
+        "frase_pronta": "O agente não esquece nenhum lead. Faz follow-up na hora certa, com a mensagem certa."
+      },
+      {
+        "beneficio": "Agendamento direto na agenda",
+        "dor_que_resolve": "Lead quer agendar mas precisa de alguém disponível para marcar manualmente",
+        "dado": "Cada hora de atraso no agendamento reduz em 10% a chance do lead aparecer.",
+        "frase_pronta": "Do 'oi' ao agendamento em menos de 5 minutos. Automático, direto na sua agenda."
+      },
+      {
+        "beneficio": "Custo menor que um funcionário",
+        "dor_que_resolve": "Custo alto de equipe de atendimento com cobertura limitada",
+        "dado": "Um atendente CLT custa R$2.500+/mês, trabalha 8h e tira férias. O agente custa uma fração e não desliga nunca.",
+        "frase_pronta": "Sem CLT. Sem férias. Sem hora extra. Sem falta. Trabalha 24h e custa menos que um estagiário."
+      },
+      {
+        "beneficio": "Personalizado para seu nicho",
+        "dor_que_resolve": "Soluções genéricas que não entendem o vocabulário e as dores específicas do setor",
+        "dado": "Cada agente é treinado exclusivamente com informações do negócio do cliente. Fala a língua do seu mercado.",
+        "frase_pronta": "Não é genérico. É treinado especificamente pro seu negócio, com suas informações, seus serviços, seu jeito."
+      }
+    ],
+    "cases_reais": [
+      {
+        "nicho": "Ótica (Varejo)",
+        "nome": "Rogério",
+        "resultado": "3 visitas agendadas na loja física em 7 dias, sem a equipe levantar um dedo",
+        "dor_original": "Dificuldade em fazer o cliente agendar para ir na loja"
+      },
+      {
+        "nicho": "Provedor de Internet",
+        "nome": "Conect",
+        "resultado": "Eliminou a necessidade de ficar ligando para clientes. Agente qualifica pelo WhatsApp.",
+        "dor_original": "Equipe gastava o dia ligando para clientes que não estavam prontos"
+      }
+    ]
+  }
+}

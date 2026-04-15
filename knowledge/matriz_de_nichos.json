@@ -1,0 +1,52 @@
+{
+  "nichos": {
+    "saude_clinica": {
+      "palavras_chave": ["clínica", "médico", "dentista", "saúde", "paciente", "consultório", "fisioterapia", "estética", "nutrição", "psicólogo"],
+      "dor_principal": "Paciente pergunta preço pelo WhatsApp e nunca agenda. No-show é epidemia: 30% dos agendados não aparecem.",
+      "dor_secundaria": "Recepcionista sobrecarregada respondendo as mesmas perguntas 50 vezes por dia.",
+      "como_agente_resolve": "O Agente de IA responde na hora com informações do procedimento, confirma interesse real, agenda automaticamente e envia lembrete 24h antes. Reduz no-show em até 60%.",
+      "frase_de_impacto": "Na saúde, o maior gargalo é o paciente que pergunta preço e some. Eu resolvo isso triando 24h, sem sua equipe perder tempo com curiosos.",
+      "exemplo_resultado": "Uma clínica de estética reduziu no-show de 35% para 12% no primeiro mês com agendamento automatizado."
+    },
+    "imobiliaria": {
+      "palavras_chave": ["imóvel", "imobiliária", "corretor", "aluguel", "apartamento", "casa", "loteamento", "construtora"],
+      "dor_principal": "80% dos leads do portal esfriam porque ninguém respondeu nos primeiros 5 minutos.",
+      "dor_secundaria": "Corretor perde tempo com lead que só quer saber preço e não tem perfil financeiro.",
+      "como_agente_resolve": "O Agente responde no segundo que o lead chega, faz as perguntas de qualificação (orçamento, região, tipo de imóvel) e só passa pro corretor quem está pronto para visitar.",
+      "frase_de_impacto": "No mercado imobiliário, quem responde primeiro leva o cliente. Com o Agente, seu lead nunca espera mais que 10 segundos.",
+      "exemplo_resultado": "Um corretor que recebia 40 leads/mês e atendia 15, passou a qualificar 100% automaticamente e focar só nos 10 quentes."
+    },
+    "varejo_ecommerce": {
+      "palavras_chave": ["loja", "varejo", "e-commerce", "ótica", "roupa", "calçado", "produto", "estoque", "vender"],
+      "dor_principal": "Cliente manda mensagem fora do horário e quando a loja abre, ele já comprou do concorrente.",
+      "dor_secundaria": "Dificuldade em fazer o cliente ir até a loja física ou agendar uma visita.",
+      "como_agente_resolve": "O Agente atende 24h, tira dúvidas sobre produtos, verifica disponibilidade e agenda visitas na loja. O cliente chega pronto pra comprar.",
+      "frase_de_impacto": "No varejo, cada minuto sem resposta é uma venda perdida. Seu WhatsApp vai vender até de madrugada.",
+      "exemplo_resultado": "Uma ótica implementou o agente e em 7 dias teve 3 visitas agendadas automaticamente, sem a equipe levantar um dedo."
+    },
+    "servicos_profissionais": {
+      "palavras_chave": ["advocacia", "advogado", "contabilidade", "consultoria", "financeiro", "empréstimo", "consignado", "seguros"],
+      "dor_principal": "Leads chegam pedindo orçamento e somem quando você demora para responder ou pede para agendar reunião.",
+      "dor_secundaria": "Muito tempo gasto explicando as mesmas coisas para cada lead novo.",
+      "como_agente_resolve": "O Agente explica seus serviços, qualifica o perfil do lead (tipo de necessidade, urgência, orçamento estimado) e agenda a consulta diretamente na sua agenda.",
+      "frase_de_impacto": "Em serviços profissionais, confiança se constrói na velocidade da resposta. O Agente responde em segundos e qualifica antes de chegar em você.",
+      "exemplo_resultado": "Um consultor financeiro que gastava 3h/dia respondendo WhatsApp reduziu para 30 minutos, focando só nos leads já qualificados."
+    },
+    "provedores_telecom": {
+      "palavras_chave": ["provedor", "internet", "telecom", "fibra", "banda larga", "plano", "tv a cabo"],
+      "dor_principal": "Equipe precisa ficar ligando para clientes que nem sempre estão prontos para contratar.",
+      "dor_secundaria": "Alto volume de perguntas repetitivas sobre planos, cobertura e preços.",
+      "como_agente_resolve": "O Agente atende as dúvidas sobre planos, verifica cobertura na região do cliente, qualifica interesse real e passa pro vendedor só quem quer contratar.",
+      "frase_de_impacto": "Sua equipe só vai ligar pra quem já está pronto pra fechar. O Agente faz toda a triagem antes.",
+      "exemplo_resultado": "Um provedor de internet parou de fazer cold calls. O agente qualifica pelo WhatsApp e a equipe só fecha."
+    },
+    "trafego_automacao": {
+      "palavras_chave": ["tráfego", "automação", "marketing", "agência", "social media", "gestor"],
+      "dor_principal": "Precisa de um agente para qualificar os próprios leads dos clientes.",
+      "dor_secundaria": "Quer revender a solução como diferencial competitivo da agência.",
+      "como_agente_resolve": "O Agente funciona como extensão da sua agência: qualifica leads dos seus clientes 24h, aumenta o resultado das campanhas e você cobra a mais por isso.",
+      "frase_de_impacto": "Imagina entregar pro seu cliente não só o tráfego, mas o atendimento 24h dos leads. Isso é diferencial competitivo real.",
+      "exemplo_resultado": "Uma agência que cobrava R$2K de gestão passou a cobrar R$3.5K incluindo o agente de IA como serviço adicional."
+    }
+  }
+}

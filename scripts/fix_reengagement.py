@@ -61,7 +61,7 @@ reagend AS (
   JOIN wa_conversations wc ON wc.contact_id = wac.id
   WHERE c.stage = 'agendado'
     AND c.stage_updated_at IS NOT NULL
-    AND c.stage_updated_at < NOW() - INTERVAL '36 hours'
+    AND c.stage_updated_at < NOW() - INTERVAL '72 hours'
     AND wc.bot_active = true AND wc.status = 'open'
     AND (c.last_lead_msg_at IS NULL OR c.last_lead_msg_at < c.last_bot_msg_at)
   LIMIT 10
