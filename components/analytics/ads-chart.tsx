@@ -10,9 +10,10 @@ interface AdsData {
 
 const COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#818cf8', '#4f46e5', '#4338ca', '#3730a3', '#312e81'];
 
-function truncate(str: string, max: number) {
+function truncate(value: unknown, max: number): string {
+  const str = String(value ?? '');
   if (!str || str === '(direto)' || str === '(sem campanha)') return str;
-  return str.length > max ? str.slice(0, max) + '…' : str;
+  return str.length > max ? str.slice(0, max) + '...' : str;
 }
 
 export function AdsChart({ data }: { data: AdsData[] }) {

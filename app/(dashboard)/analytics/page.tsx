@@ -9,7 +9,7 @@ import { StatusChart } from '@/components/analytics/status-chart';
 import { HeatmapChart } from '@/components/analytics/heatmap-chart';
 import { NicheChart } from '@/components/analytics/niche-chart';
 import { SourceChart } from '@/components/analytics/source-chart';
-import { AdsChart } from '@/components/analytics/ads-chart';
+// import { AdsChart } from '@/components/analytics/ads-chart';
 import { LeadsTable } from '@/components/analytics/leads-table';
 import {
   Users, MessageSquare, CalendarCheck, Clock, TrendingUp,
@@ -259,27 +259,7 @@ export default function AnalyticsPage() {
         )}
       </div>
 
-      {/* Row 3: Anuncios Meta Ads */}
-      <div className="grid grid-cols-1 gap-4">
-        {isLoading ? (
-          <Skeleton className="h-[320px]" />
-        ) : (
-          <Card className="bg-zinc-900/80 border-zinc-800">
-            <CardHeader className="pb-1">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-zinc-300 flex items-center gap-2">
-                  <Radio className="h-4 w-4 text-orange-400" />
-                  Anuncios Meta Ads
-                </CardTitle>
-                <span className="text-[10px] text-zinc-600">leads por anuncio e campanha</span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <AdsChart data={data?.adsBreakdown || []} />
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {/* Row 3: Anuncios Meta Ads - TODO: reativar AdsChart apos fix de build */}
 
       {/* Leads Table */}
       <Card className="bg-zinc-900/80 border-zinc-800">
