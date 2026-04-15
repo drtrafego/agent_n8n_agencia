@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     const scheduledLeads = await db.execute<{ count: string }>(
       sql`SELECT COUNT(*) as count FROM contacts
-          WHERE (observacoes_sdr ILIKE '%agendad%' OR observacoes_sdr ILIKE '%call%' OR observacoes_sdr ILIKE '%convite disparado%')
+          WHERE stage IN ('agendado','agendou','realizada')
             AND created_at >= ${sinceDate}`
     );
 
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
     const prevScheduled = await db.execute<{ count: string }>(
       sql`SELECT COUNT(*) as count FROM contacts
-          WHERE (observacoes_sdr ILIKE '%agendad%' OR observacoes_sdr ILIKE '%call%' OR observacoes_sdr ILIKE '%convite disparado%')
+          WHERE stage IN ('agendado','agendou','realizada')
             AND created_at >= ${prevDate}
             AND created_at < ${sinceDate}`
     );
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
             JOIN wa_conversations conv ON conv.id = m.conversation_id
             JOIN wa_contacts wc ON wc.id = conv.contact_id
             JOIN contacts ct ON ct.telefone = wc.wa_id
-            WHERE ct.observacoes_sdr ILIKE '%agendad%' OR ct.observacoes_sdr ILIKE '%convite disparado%'
+            WHERE ct.stage IN ('agendado','agendou','realizada')
             GROUP BY conv.id
           ) sub`
     );
@@ -217,13 +217,40 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================
-    // 12. RECENT LEADS
+    // 12. ADS / UTM BREAKDOWN
+    // ============================================
+    const adsBreakdown = await db.execute<{ ad_name: string; campaign_name: string; leads: string }>(
+      sql`SELECT
+            COALESCE(ad_name, '(direto)') as ad_name,
+            COALESCE(campaign_name, '(sem campanha)') as campaign_name,
+            COUNT(*)::text as leads
+          FROM contacts
+          WHERE created_at >= ${sinceDate}
+          GROUP BY ad_name, campaign_name
+          ORDER BY COUNT(*) DESC
+          LIMIT 15`
+    );
+
+    // ============================================
+    // 13. CUSTO ESTIMADO
+    // ============================================
+    const costData = await db.execute<{ total_cost: string; total_tokens: string; execucoes: string }>(
+      sql`SELECT
+            ROUND(SUM(estimated_cost_usd)::numeric, 4)::text as total_cost,
+            SUM(total_tokens)::text as total_tokens,
+            COUNT(*)::text as execucoes
+          FROM wa_token_usage_logs
+          WHERE executed_at >= ${sinceDate}`
+    );
+
+    // ============================================
+    // 14. RECENT LEADS
     // ============================================
     let statusWhere = sql`1=1`;
-    if (statusFilter === 'agendado') statusWhere = sql`(ct.observacoes_sdr ILIKE '%agendad%' OR ct.observacoes_sdr ILIKE '%convite disparado%')`;
-    else if (statusFilter === 'qualificando') statusWhere = sql`ct.observacoes_sdr IS NOT NULL AND ct.observacoes_sdr NOT ILIKE '%agendad%' AND ct.observacoes_sdr NOT ILIKE '%convite disparado%' AND ct.observacoes_sdr NOT ILIKE '%sem interesse%'`;
-    else if (statusFilter === 'sem_interesse') statusWhere = sql`ct.observacoes_sdr ILIKE '%sem interesse%'`;
-    else if (statusFilter === 'novo') statusWhere = sql`ct.observacoes_sdr IS NULL`;
+    if (statusFilter === 'agendado') statusWhere = sql`ct.stage IN ('agendado','agendou','realizada')`;
+    else if (statusFilter === 'qualificando') statusWhere = sql`ct.stage IN ('qualificando','interesse') OR ct.stage IS NULL`;
+    else if (statusFilter === 'sem_interesse') statusWhere = sql`ct.stage = 'sem_interesse'`;
+    else if (statusFilter === 'novo') statusWhere = sql`ct.stage = 'novo' OR ct.stage IS NULL`;
 
     const recentLeads = await db.execute<{
       id: string; name: string; phone: string; last_message: string;
@@ -238,8 +265,11 @@ export async function GET(req: NextRequest) {
             conv.last_message,
             conv.last_message_at,
             CASE
-              WHEN ct.observacoes_sdr ILIKE '%agendad%' OR ct.observacoes_sdr ILIKE '%convite disparado%' THEN 'agendado'
-              WHEN ct.observacoes_sdr ILIKE '%sem interesse%' THEN 'sem_interesse'
+              WHEN ct.stage IN ('agendado','agendou') THEN 'agendado'
+              WHEN ct.stage = 'realizada' THEN 'realizada'
+              WHEN ct.stage = 'sem_interesse' THEN 'sem_interesse'
+              WHEN ct.stage = 'interesse' THEN 'interesse'
+              WHEN ct.stage = 'perdido' THEN 'perdido'
               WHEN ct.observacoes_sdr IS NOT NULL THEN 'qualificando'
               ELSE 'novo'
             END as status,
@@ -265,6 +295,8 @@ export async function GET(req: NextRequest) {
     const scheduledCount = Number(scheduledLeads[0]?.count || 0);
     const prevLeadCount = Number(prevLeads[0]?.count || 0);
     const prevScheduledCount = Number(prevScheduled[0]?.count || 0);
+    const totalCostUsd = Number(costData[0]?.total_cost || 0);
+    const costPerLead = totalCount > 0 ? Math.round((totalCostUsd / totalCount) * 1000) / 1000 : 0;
 
     const DOW_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
@@ -294,6 +326,9 @@ export async function GET(req: NextRequest) {
         avgMsgsToSchedule: Number(avgMsgsToSchedule[0]?.avg_msgs || 0),
         conversionRate: totalCount > 0 ? Math.round((scheduledCount / totalCount) * 100) : 0,
         responseRate: totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0,
+        estimatedCostUsd: totalCostUsd,
+        costPerLead,
+        aiExecutions: Number(costData[0]?.execucoes || 0),
       },
       trends: { leads: leadsTrend, scheduled: scheduledTrend },
       funnel: [
@@ -304,6 +339,7 @@ export async function GET(req: NextRequest) {
       ],
       statusBreakdown: (leadStatuses || []).map((s) => ({ status: s.status, count: Number(s.count) })),
       sourceBreakdown: (sourceBreakdown || []).map((s) => ({ source: s.source || 'direto', count: Number(s.count) })),
+      adsBreakdown: (adsBreakdown || []).map((a) => ({ ad_name: a.ad_name, campaign_name: a.campaign_name, leads: Number(a.leads) })),
       niches: (nicheData || []).map((n) => ({ niche: n.niche, count: Number(n.count) })),
       dailyMessages: (dailyMessages || []).map((d) => ({ date: d.date, inbound: Number(d.inbound), outbound: Number(d.outbound), total: Number(d.total) })),
       dailyLeads: (dailyLeads || []).map((d) => ({ date: d.date, count: Number(d.count) })),
