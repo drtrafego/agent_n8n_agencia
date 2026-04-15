@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { sql } from 'drizzle-orm';
 
-// Cache em memória para evitar queries pesadas a cada carregamento.
+// Cache em memória para evitar 13 queries pesadas a cada carregamento.
 // Invalida apos 5 minutos. Chave = "days:statusFilter"
 const analyticsCache = new Map<string, { data: unknown; ts: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -13,12 +13,14 @@ export async function GET(req: NextRequest) {
     const days = Number(searchParams.get('days') || '30');
     const statusFilter = searchParams.get('status') || 'all';
 
+    // Retorna cache se ainda valido
     const cacheKey = `${days}:${statusFilter}`;
     const cached = analyticsCache.get(cacheKey);
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
       return NextResponse.json(cached.data);
     }
 
+    // Use make_interval for safe parameterized interval
     const sinceDate = sql`NOW() - make_interval(days => ${days})`;
     const prevDate = sql`NOW() - make_interval(days => ${days * 2})`;
 
@@ -38,10 +40,9 @@ export async function GET(req: NextRequest) {
             AND c.created_at >= ${sinceDate}`
     );
 
-    // Usa o campo stage — a fonte de verdade do CRM
     const scheduledLeads = await db.execute<{ count: string }>(
       sql`SELECT COUNT(*) as count FROM contacts
-          WHERE stage IN ('agendado','agendou','realizada')
+          WHERE (observacoes_sdr ILIKE '%agendad%' OR observacoes_sdr ILIKE '%call%' OR observacoes_sdr ILIKE '%convite disparado%')
             AND created_at >= ${sinceDate}`
     );
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
 
     const prevScheduled = await db.execute<{ count: string }>(
       sql`SELECT COUNT(*) as count FROM contacts
-          WHERE stage IN ('agendado','agendou','realizada')
+          WHERE (observacoes_sdr ILIKE '%agendad%' OR observacoes_sdr ILIKE '%call%' OR observacoes_sdr ILIKE '%convite disparado%')
             AND created_at >= ${prevDate}
             AND created_at < ${sinceDate}`
     );
@@ -105,24 +106,20 @@ export async function GET(req: NextRequest) {
             JOIN wa_conversations conv ON conv.id = m.conversation_id
             JOIN wa_contacts wc ON wc.id = conv.contact_id
             JOIN contacts ct ON ct.telefone = wc.wa_id
-            WHERE ct.stage IN ('agendado','agendou','realizada')
+            WHERE ct.observacoes_sdr ILIKE '%agendad%' OR ct.observacoes_sdr ILIKE '%convite disparado%'
             GROUP BY conv.id
           ) sub`
     );
 
     // ============================================
-    // 5. LEAD STATUS BREAKDOWN — usa stage, fonte de verdade
+    // 5. LEAD STATUS BREAKDOWN
     // ============================================
     const leadStatuses = await db.execute<{ status: string; count: string }>(
       sql`SELECT
             CASE
-              WHEN stage IN ('agendado','agendou') THEN 'agendado'
-              WHEN stage = 'realizada' THEN 'realizada'
-              WHEN stage = 'sem_interesse' THEN 'sem_interesse'
-              WHEN stage = 'interesse' THEN 'interesse'
-              WHEN stage = 'perdido' THEN 'perdido'
-              WHEN stage = 'fechou' THEN 'fechou'
-              ELSE COALESCE(stage, 'qualificando')
+              WHEN observacoes_sdr ILIKE '%agendad%' OR observacoes_sdr ILIKE '%convite disparado%' THEN 'agendado'
+              WHEN observacoes_sdr ILIKE '%sem interesse%' THEN 'sem_interesse'
+              ELSE 'qualificando'
             END as status,
             COUNT(*) as count
           FROM contacts
@@ -171,21 +168,21 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================
-    // 9. TOP NICHES — usa coluna nicho do CRM primeiro, fallback em observacoes
+    // 9. TOP NICHES
     // ============================================
     const nicheData = await db.execute<{ niche: string; count: string }>(
       sql`SELECT
             CASE
-              WHEN nicho IS NOT NULL AND nicho != '' THEN nicho
               WHEN observacoes_sdr ILIKE '%clinica%' OR observacoes_sdr ILIKE '%saude%' OR observacoes_sdr ILIKE '%medic%' OR observacoes_sdr ILIKE '%odonto%' OR observacoes_sdr ILIKE '%dentist%' THEN 'Saude/Clinica'
-              WHEN observacoes_sdr ILIKE '%imobili%' OR observacoes_sdr ILIKE '%corretor%' OR observacoes_sdr ILIKE '%imoveis%' THEN 'Imobiliaria'
-              WHEN observacoes_sdr ILIKE '%ecommerce%' OR observacoes_sdr ILIKE '%loja%' OR observacoes_sdr ILIKE '%varejo%' THEN 'E-commerce'
+              WHEN observacoes_sdr ILIKE '%imobili%' OR observacoes_sdr ILIKE '%corretor%imov%' OR observacoes_sdr ILIKE '%imoveis%' THEN 'Imobiliaria'
+              WHEN observacoes_sdr ILIKE '%ecommerce%' OR observacoes_sdr ILIKE '%loja%' OR observacoes_sdr ILIKE '%varejo%' OR observacoes_sdr ILIKE '%eletron%' THEN 'E-commerce'
               WHEN observacoes_sdr ILIKE '%advog%' OR observacoes_sdr ILIKE '%juridic%' THEN 'Advocacia'
               WHEN observacoes_sdr ILIKE '%restaurante%' OR observacoes_sdr ILIKE '%delivery%' THEN 'Alimentacao'
               WHEN observacoes_sdr ILIKE '%academia%' OR observacoes_sdr ILIKE '%crossfit%' OR observacoes_sdr ILIKE '%fitness%' THEN 'Fitness'
               WHEN observacoes_sdr ILIKE '%seguro%' THEN 'Seguros'
-              WHEN observacoes_sdr ILIKE '%estetica%' OR observacoes_sdr ILIKE '%beleza%' THEN 'Estetica'
+              WHEN observacoes_sdr ILIKE '%estetica%' OR observacoes_sdr ILIKE '%beleza%' OR observacoes_sdr ILIKE '%beauty%' THEN 'Estetica'
               WHEN observacoes_sdr ILIKE '%contab%' OR observacoes_sdr ILIKE '%fiscal%' THEN 'Contabilidade'
+              WHEN observacoes_sdr ILIKE '%concession%' OR observacoes_sdr ILIKE '%veiculo%' THEN 'Automotivo'
               ELSE 'Outros'
             END as niche,
             COUNT(*) as count
@@ -220,40 +217,13 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================
-    // 12. ADS / UTM BREAKDOWN — usa ad_name e campaign_name do Meta referral
-    // ============================================
-    const adsBreakdown = await db.execute<{ ad_name: string; campaign_name: string; leads: string }>(
-      sql`SELECT
-            COALESCE(ad_name, '(direto)') as ad_name,
-            COALESCE(campaign_name, '(sem campanha)') as campaign_name,
-            COUNT(*) as leads
-          FROM contacts
-          WHERE created_at >= ${sinceDate}
-          GROUP BY ad_name, campaign_name
-          ORDER BY leads DESC
-          LIMIT 15`
-    );
-
-    // ============================================
-    // 13. CUSTO ESTIMADO — wa_token_usage_logs
-    // ============================================
-    const costData = await db.execute<{ total_cost: string; total_tokens: string; execucoes: string; custo_por_lead: string }>(
-      sql`SELECT
-            ROUND(SUM(estimated_cost_usd)::numeric, 4) as total_cost,
-            SUM(total_tokens)::bigint as total_tokens,
-            COUNT(*) as execucoes
-          FROM wa_token_usage_logs
-          WHERE executed_at >= NOW() - make_interval(days => ${days})`
-    );
-
-    // ============================================
-    // 14. RECENT LEADS — usa stage para status
+    // 12. RECENT LEADS
     // ============================================
     let statusWhere = sql`1=1`;
-    if (statusFilter === 'agendado') statusWhere = sql`ct.stage IN ('agendado','agendou','realizada')`;
-    else if (statusFilter === 'qualificando') statusWhere = sql`ct.stage IN ('qualificando','interesse') OR ct.stage IS NULL`;
-    else if (statusFilter === 'sem_interesse') statusWhere = sql`ct.stage = 'sem_interesse'`;
-    else if (statusFilter === 'novo') statusWhere = sql`ct.stage = 'novo' OR ct.stage IS NULL`;
+    if (statusFilter === 'agendado') statusWhere = sql`(ct.observacoes_sdr ILIKE '%agendad%' OR ct.observacoes_sdr ILIKE '%convite disparado%')`;
+    else if (statusFilter === 'qualificando') statusWhere = sql`ct.observacoes_sdr IS NOT NULL AND ct.observacoes_sdr NOT ILIKE '%agendad%' AND ct.observacoes_sdr NOT ILIKE '%convite disparado%' AND ct.observacoes_sdr NOT ILIKE '%sem interesse%'`;
+    else if (statusFilter === 'sem_interesse') statusWhere = sql`ct.observacoes_sdr ILIKE '%sem interesse%'`;
+    else if (statusFilter === 'novo') statusWhere = sql`ct.observacoes_sdr IS NULL`;
 
     const recentLeads = await db.execute<{
       id: string; name: string; phone: string; last_message: string;
@@ -268,12 +238,8 @@ export async function GET(req: NextRequest) {
             conv.last_message,
             conv.last_message_at,
             CASE
-              WHEN ct.stage IN ('agendado','agendou') THEN 'agendado'
-              WHEN ct.stage = 'realizada' THEN 'realizada'
-              WHEN ct.stage = 'sem_interesse' THEN 'sem_interesse'
-              WHEN ct.stage = 'interesse' THEN 'interesse'
-              WHEN ct.stage = 'perdido' THEN 'perdido'
-              WHEN ct.stage = 'fechou' THEN 'fechou'
+              WHEN ct.observacoes_sdr ILIKE '%agendad%' OR ct.observacoes_sdr ILIKE '%convite disparado%' THEN 'agendado'
+              WHEN ct.observacoes_sdr ILIKE '%sem interesse%' THEN 'sem_interesse'
               WHEN ct.observacoes_sdr IS NOT NULL THEN 'qualificando'
               ELSE 'novo'
             END as status,
@@ -315,11 +281,6 @@ export async function GET(req: NextRequest) {
       sql`SELECT COUNT(*) as c FROM wa_messages WHERE created_at >= ${sinceDate}`
     );
 
-    const cost = costData[0];
-    const totalCostUsd = Number(cost?.total_cost || 0);
-    const totalLeadsCount = totalCount;
-    const costPerLead = totalLeadsCount > 0 ? Math.round((totalCostUsd / totalLeadsCount) * 1000) / 1000 : 0;
-
     const result = {
       period: { days, label: days === 7 ? '7 dias' : days === 30 ? '30 dias' : days === 90 ? '90 dias' : `${days}d` },
       summary: {
@@ -333,10 +294,6 @@ export async function GET(req: NextRequest) {
         avgMsgsToSchedule: Number(avgMsgsToSchedule[0]?.avg_msgs || 0),
         conversionRate: totalCount > 0 ? Math.round((scheduledCount / totalCount) * 100) : 0,
         responseRate: totalCount > 0 ? Math.round((respondedCount / totalCount) * 100) : 0,
-        estimatedCostUsd: totalCostUsd,
-        costPerLead,
-        totalTokens: Number(cost?.total_tokens || 0),
-        aiExecutions: Number(cost?.execucoes || 0),
       },
       trends: { leads: leadsTrend, scheduled: scheduledTrend },
       funnel: [
@@ -347,7 +304,6 @@ export async function GET(req: NextRequest) {
       ],
       statusBreakdown: (leadStatuses || []).map((s) => ({ status: s.status, count: Number(s.count) })),
       sourceBreakdown: (sourceBreakdown || []).map((s) => ({ source: s.source || 'direto', count: Number(s.count) })),
-      adsBreakdown: (adsBreakdown || []).map((a) => ({ ad_name: a.ad_name, campaign_name: a.campaign_name, leads: Number(a.leads) })),
       niches: (nicheData || []).map((n) => ({ niche: n.niche, count: Number(n.count) })),
       dailyMessages: (dailyMessages || []).map((d) => ({ date: d.date, inbound: Number(d.inbound), outbound: Number(d.outbound), total: Number(d.total) })),
       dailyLeads: (dailyLeads || []).map((d) => ({ date: d.date, count: Number(d.count) })),
@@ -357,6 +313,7 @@ export async function GET(req: NextRequest) {
       recentLeads: (recentLeads || []).map((l) => ({ ...l, msg_count: Number(l.msg_count) })),
     };
 
+    // Salvar no cache
     analyticsCache.set(cacheKey, { data: result, ts: Date.now() });
 
     return NextResponse.json(result);
