@@ -42,17 +42,16 @@ export async function GET() {
       WHERE nicho IS NULL AND observacoes_sdr IS NOT NULL AND LENGTH(observacoes_sdr) > 10
     `);
 
-    // Auto-advance: lead respondeu APOS o bot ter falado → sai de 'novo' para 'qualificando'.
-    // Regra estrita: clicar no botao do anuncio NAO conta (aquela msg vem antes do bot responder).
-    // Lead so avanca se houve interacao real: bot falou, e lead respondeu depois.
+    // Auto-advance: bot respondeu ao lead → sai de 'novo' para 'qualificando'.
+    // Usa last_bot_msg_at como gatilho porque o cron de follow-up reseta esse campo
+    // constantemente, tornando a comparacao com last_lead_msg_at instavel.
+    // 'novo' e apenas o estado inicial antes do bot responder pela primeira vez.
     await db.execute(sql`
       UPDATE contacts SET
         stage = 'qualificando',
         stage_updated_at = NOW()
       WHERE stage = 'novo'
-        AND last_lead_msg_at IS NOT NULL
         AND last_bot_msg_at IS NOT NULL
-        AND last_lead_msg_at > last_bot_msg_at
     `);
 
     // Ressurreicao: lead descartado voltou a responder DEPOIS de ser marcado como sem_interesse.
@@ -67,17 +66,18 @@ export async function GET() {
         AND last_lead_msg_at > NOW() - INTERVAL '14 days'
     `);
 
-    // Leads com 6+ follow-ups sem resposta E sem mensagem do lead há 7 dias → sem_interesse
-    // Janela de 7 dias (antes era 72h) para evitar loop com a regra de ressurreicao:
-    // leads que responderam recentemente nao podem ser re-descartados automaticamente.
-    // Nao toca em leads que ja avancaram (interesse, agendado, realizada, convertido).
+    // Fechar leads que esgotaram follow-ups e estao silenciosos.
+    // Usa followup_count >= 5 (nao 6) pois leads podem sair das janelas de tempo
+    // antes de receber o ultimo follow-up, ficando presos indefinidamente.
+    // Condicao de silencio: nao respondeu ou ultima resposta foi antes da ultima msg do bot.
+    // Nao toca em leads que avancaram (interesse, agendado, realizada, convertido).
     await db.execute(sql`
       UPDATE contacts SET
-        stage = 'sem_interesse',
+        stage = 'perdido',
         stage_updated_at = NOW()
-      WHERE followup_count >= 6
+      WHERE followup_count >= 5
         AND stage IN ('novo', 'qualificando')
-        AND (last_lead_msg_at IS NULL OR last_lead_msg_at < NOW() - INTERVAL '7 days')
+        AND (last_lead_msg_at IS NULL OR last_lead_msg_at < last_bot_msg_at)
     `);
 
     const rows = await db.execute<{
