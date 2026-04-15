@@ -40,3 +40,7 @@ next-env.d.ts
 postgres_data/
 .env*.local
 .claude/
+
+execs_tmp.json
+wf_tmp.json
+backups/
