@@ -21,6 +21,37 @@ import {
 import { downloadMedia } from '@/lib/meta/client';
 import { put, getDownloadUrl } from '@vercel/blob';
 
+function resolvePlacement(targeting: Record<string, unknown>): string | null {
+  const parts: string[] = [];
+  const platforms = (targeting.publisher_platforms as string[]) || [];
+
+  if (platforms.includes('instagram')) {
+    const pos = (targeting.instagram_positions as string[]) || [];
+    if (pos.length === 0 || pos.includes('stream')) parts.push('Instagram Feed');
+    if (pos.includes('story')) parts.push('Instagram Stories');
+    if (pos.includes('reels') && !parts.includes('Reels')) parts.push('Reels');
+    if (pos.includes('explore')) parts.push('Instagram Explore');
+  }
+
+  if (platforms.includes('facebook')) {
+    const pos = (targeting.facebook_positions as string[]) || [];
+    if (pos.length === 0 || pos.includes('feed')) parts.push('Facebook Feed');
+    if (pos.includes('story') && !parts.includes('Facebook Stories')) parts.push('Facebook Stories');
+  }
+
+  if (parts.length === 0 && platforms.length > 0) {
+    const PLATFORM_LABELS: Record<string, string> = {
+      instagram: 'Instagram',
+      facebook: 'Facebook',
+      audience_network: 'Audience Network',
+      messenger: 'Messenger',
+    };
+    return platforms.map((p) => PLATFORM_LABELS[p] || p).join(', ');
+  }
+
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
 // GET — verificação do webhook pela Meta
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -228,6 +259,27 @@ export async function POST(req: NextRequest) {
                     adset_name = COALESCE(${adsetName}, adset_name)
                   WHERE telefone = ${waId} AND ad_id = ${adId}`
                 );
+              }
+              // Buscar placement do adset
+              const fetchedAdsetId = adsetId || adData.adset?.id;
+              if (fetchedAdsetId) {
+                try {
+                  const adsetRes = await fetch(
+                    `https://graph.facebook.com/v21.0/${fetchedAdsetId}?fields=targeting&access_token=${metaToken}`
+                  );
+                  if (adsetRes.ok) {
+                    const adsetData = await adsetRes.json();
+                    const targeting = adsetData.targeting || {};
+                    const placement = resolvePlacement(targeting);
+                    if (placement) {
+                      await waDb.execute(
+                        sql`UPDATE contacts SET placement = ${placement} WHERE telefone = ${waId} AND placement IS NULL`
+                      );
+                    }
+                  }
+                } catch (err) {
+                  console.error('[webhook] Erro ao buscar placement:', err);
+                }
               }
             } catch (err) {
               console.error('[webhook] Erro enriquecer ad:', err);

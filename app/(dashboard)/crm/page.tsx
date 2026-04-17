@@ -31,6 +31,7 @@ interface Lead {
   utm_medium: string | null;
   utm_campaign: string | null;
   utm_content: string | null;
+  placement: string | null;
   wa_contact_name: string | null;
   wa_phone: string | null;
   last_message: string | null;
@@ -70,6 +71,7 @@ interface LeadDetail {
     utm_medium: string | null;
     utm_campaign: string | null;
     utm_content: string | null;
+    placement: string | null;
     created_at: string;
     updated_at: string;
     followup_count?: number;
@@ -308,6 +310,11 @@ function LeadCard({
         {(lead.ad_id || lead.utm_content) && (
           <span title={lead.utm_content ? `Anuncio: ${lead.utm_content}` : `Ad ID: ${lead.ad_id}`} className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-300 border border-blue-800/30">
             {lead.campaign_name ? truncate(lead.campaign_name, 20) : 'Meta Ad'}
+          </span>
+        )}
+        {lead.placement && (
+          <span title={`Placement: ${lead.placement}`} className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-900/40 text-violet-300 border border-violet-800/30">
+            {lead.placement}
           </span>
         )}
         {followups > 0 && followups < 99 && (
@@ -630,6 +637,12 @@ function LeadModal({
                         <>
                           <span className="text-[10px] text-zinc-500">Conjunto</span>
                           <span className="text-[10px] text-zinc-300 truncate" title={detail.contact.adset_name}>{detail.contact.adset_name}</span>
+                        </>
+                      )}
+                      {detail.contact.placement && (
+                        <>
+                          <span className="text-[10px] text-zinc-500">Placement</span>
+                          <span className="text-[10px] text-violet-300 truncate" title={detail.contact.placement}>{detail.contact.placement}</span>
                         </>
                       )}
                       {detail.contact.utm_content && (
