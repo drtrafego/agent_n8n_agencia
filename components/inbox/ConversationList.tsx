@@ -37,7 +37,7 @@ export function ConversationList({ initialConversations }: ConversationListProps
   // Refresh automático a cada 30s para não depender só do SSE
   useEffect(() => {
     refreshConversations(true);
-    const timer = setInterval(() => refreshConversations(true), 30_000);
+    const timer = setInterval(() => refreshConversations(true), 120_000);
     return () => clearInterval(timer);
   }, [refreshConversations]);
 

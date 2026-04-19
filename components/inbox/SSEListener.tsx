@@ -99,7 +99,7 @@ export function useSSE(
 
     // Polling fallback — refresh state every 30s in case SSE dropped events
     const poll = conversationId === 'all' ? pollConversations : pollMessages;
-    pollInterval = setInterval(poll, 30000);
+    pollInterval = setInterval(poll, 120000);
 
     // Also poll once on page visibility restore (tab regain focus)
     function handleVisibilityChange() {
