@@ -21,6 +21,29 @@ import {
 import { downloadMedia } from '@/lib/meta/client';
 import { put, getDownloadUrl } from '@vercel/blob';
 
+// Traduz o valor bruto de {{placement}} da Meta para label legível
+function resolvePlacementFromUtm(raw: string): string | null {
+  const MAP: Record<string, string> = {
+    feed:                 'Instagram Feed',
+    instagram_feed:       'Instagram Feed',
+    story:                'Instagram Stories',
+    instagram_stories:    'Instagram Stories',
+    reels:                'Instagram Reels',
+    instagram_reels:      'Instagram Reels',
+    explore:              'Instagram Explore',
+    instagram_explore:    'Instagram Explore',
+    facebook_feed:        'Facebook Feed',
+    facebook_stories:     'Facebook Stories',
+    facebook_reels:       'Facebook Reels',
+    marketplace:          'Facebook Marketplace',
+    right_hand_column:    'Facebook Feed',
+    audience_network:     'Audience Network',
+    messenger_inbox:      'Messenger',
+    messenger_stories:    'Messenger Stories',
+  };
+  return MAP[raw.toLowerCase().trim()] ?? raw;
+}
+
 function resolvePlacement(targeting: Record<string, unknown>): string | null {
   const platforms = (targeting.publisher_platforms as string[]) || [];
 
@@ -192,6 +215,23 @@ export async function POST(req: NextRequest) {
       const adBody = referral?.body || null;
       const adSourceUrl = referral?.source_url || null;
 
+      // Parsear UTM params do source_url (Meta resolve {{placement}}, {{site_source_name}}, etc.)
+      let utmPlacement: string | null = null;
+      let utmSource: string | null = null;
+      let utmMedium: string | null = null;
+      let utmCampaign: string | null = null;
+      let utmContent: string | null = null;
+      if (adSourceUrl) {
+        try {
+          const urlParams = new URL(adSourceUrl).searchParams;
+          utmPlacement = urlParams.get('utm_placement') || urlParams.get('placement') || null;
+          utmSource   = urlParams.get('utm_source')   || null;
+          utmMedium   = urlParams.get('utm_medium')   || null;
+          utmCampaign = urlParams.get('utm_campaign') || null;
+          utmContent  = urlParams.get('utm_content')  || null;
+        } catch { /* URL inválida, ignora */ }
+      }
+
       if (!contact) {
         const [created] = await waDb
           .insert(waContacts)
@@ -246,10 +286,12 @@ export async function POST(req: NextRequest) {
         if (adId) {
           await waDb.execute(
             sql`UPDATE contacts SET
-                  ad_id = ${adId},
-                  utm_content = ${adHeadline || ''},
-                  utm_source = ${adSourceUrl || ''},
-                  utm_medium = ${adBody || ''}
+                  ad_id        = ${adId},
+                  utm_content  = ${utmContent  || adHeadline || ''},
+                  utm_source   = ${utmSource   || adSourceUrl || ''},
+                  utm_medium   = ${utmMedium   || adBody || ''},
+                  utm_campaign = COALESCE(NULLIF(${utmCampaign || ''}, ''), utm_campaign),
+                  placement    = COALESCE(NULLIF(${utmPlacement ? resolvePlacementFromUtm(utmPlacement) : ''}, ''), placement)
                 WHERE telefone = ${waId}`
           );
 
