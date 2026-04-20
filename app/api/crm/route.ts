@@ -101,6 +101,7 @@ export async function GET() {
       utm_medium: string | null;
       utm_campaign: string | null;
       utm_content: string | null;
+      placement: string | null;
       wa_contact_name: string | null;
       wa_phone: string | null;
       last_message: string | null;
@@ -131,6 +132,7 @@ export async function GET() {
         c.utm_medium,
         c.utm_campaign,
         c.utm_content,
+        c.placement,
         wc.name as wa_contact_name,
         wc.phone as wa_phone,
         conv.last_message,
