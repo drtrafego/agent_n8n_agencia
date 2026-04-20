@@ -22,34 +22,53 @@ import { downloadMedia } from '@/lib/meta/client';
 import { put, getDownloadUrl } from '@vercel/blob';
 
 function resolvePlacement(targeting: Record<string, unknown>): string | null {
-  const parts: string[] = [];
   const platforms = (targeting.publisher_platforms as string[]) || [];
 
+  // Mapeamento de position -> label legível
+  const IG_LABELS: Record<string, string> = {
+    stream: 'Instagram Feed',
+    feed: 'Instagram Feed',
+    story: 'Instagram Stories',
+    reels: 'Instagram Reels',
+    explore: 'Instagram Explore',
+    explore_home: 'Instagram Explore',
+    profile_feed: 'Instagram Feed',
+  };
+  const FB_LABELS: Record<string, string> = {
+    feed: 'Facebook Feed',
+    story: 'Facebook Stories',
+    reels: 'Facebook Reels',
+    video_feeds: 'Facebook Video',
+    marketplace: 'Facebook Marketplace',
+    right_hand_column: 'Facebook Feed',
+    instant_article: 'Facebook Feed',
+  };
+
+  // Prioridade: instagram > facebook. Pega o placement mais específico (primeiro da lista).
   if (platforms.includes('instagram')) {
     const pos = (targeting.instagram_positions as string[]) || [];
-    if (pos.length === 0 || pos.includes('stream')) parts.push('Instagram Feed');
-    if (pos.includes('story')) parts.push('Instagram Stories');
-    if (pos.includes('reels') && !parts.includes('Reels')) parts.push('Reels');
-    if (pos.includes('explore')) parts.push('Instagram Explore');
+    // Único placement → nome exato. Múltiplos → só a plataforma.
+    if (pos.length === 1) return IG_LABELS[pos[0]] ?? 'Instagram';
+    if (pos.length > 1) return 'Instagram';
+    return 'Instagram Feed'; // advantage+ sem posição explícita
   }
 
   if (platforms.includes('facebook')) {
     const pos = (targeting.facebook_positions as string[]) || [];
-    if (pos.length === 0 || pos.includes('feed')) parts.push('Facebook Feed');
-    if (pos.includes('story') && !parts.includes('Facebook Stories')) parts.push('Facebook Stories');
+    if (pos.length === 1) return FB_LABELS[pos[0]] ?? 'Facebook';
+    if (pos.length > 1) return 'Facebook';
+    return 'Facebook Feed';
   }
 
-  if (parts.length === 0 && platforms.length > 0) {
+  if (platforms.length > 0) {
     const PLATFORM_LABELS: Record<string, string> = {
-      instagram: 'Instagram',
-      facebook: 'Facebook',
       audience_network: 'Audience Network',
       messenger: 'Messenger',
     };
-    return platforms.map((p) => PLATFORM_LABELS[p] || p).join(', ');
+    return PLATFORM_LABELS[platforms[0]] ?? platforms[0];
   }
 
-  return parts.length > 0 ? parts.join(', ') : null;
+  return null;
 }
 
 // GET — verificação do webhook pela Meta
